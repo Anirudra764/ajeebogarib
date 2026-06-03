@@ -1,0 +1,6 @@
+{
+  "name": "Ajeeb-o-Gareeb",
+  "description": "Official website for Ajeeb-o-Gareeb, a 100-minute live storytelling musical by Annesha Partha Mishra, blending music, theatre, and stories in Jamshedpur.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
