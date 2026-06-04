@@ -95,9 +95,10 @@ interface AjeebContextType {
   
   // Interactive handlers
   addComment: (photoId: string, user: string, text: string) => Promise<boolean>;
-  submitReservation: (res: Omit<TicketReservation, "id" | "reservedAt">) => Promise<boolean>;
+  submitReservation: (res: Omit<TicketReservation, "id" | "reservedAt">, customId?: string) => Promise<boolean>;
   cancelReservation: (id: string) => Promise<boolean>;
   submitLead: (lead: Omit<ContactMessage, "sentAt">) => Promise<boolean>;
+  lookupTicket: (id: string) => Promise<TicketReservation | null>;
 }
 
 const AjeebDataContext = createContext<AjeebContextType | undefined>(undefined);
@@ -108,6 +109,35 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [shows, setShows] = useState<PerformanceShow[]>(UPCOMING_EVENTS);
   const [gallery, setGallery] = useState<GalleryItem[]>(GALLERY_ITEMS);
   const [bookings, setBookings] = useState<TicketReservation[]>([]);
+
+  // Seed the TIX-201600 into Firestore so it is guaranteed to exist for all users
+  useEffect(() => {
+    const seedBooking = async () => {
+      try {
+        const docRef = doc(db, "bookings", "TIX-201600");
+        const docSnap = await getDoc(docRef);
+        if (!docSnap.exists()) {
+          await setDoc(docRef, {
+            id: "TIX-201600",
+            showId: "show-01",
+            showTitle: "Ajeeb-O-Gareeb Acoustic Monsoon",
+            date: "JUNE 15, 2026",
+            name: "Anirudra Paul",
+            email: "anirudrapaul764@gmail.com",
+            phone: "+91 98765 43210",
+            ticketsCount: 2,
+            reservedAt: new Date().toLocaleDateString("en-IN"),
+            status: "confirmed",
+            uid: "guest"
+          });
+          console.log("Seeded queryable ticket TIX-201600 into Firestore for all users.");
+        }
+      } catch (err) {
+        console.warn("Firestore target seed skipped or already existed:", err);
+      }
+    };
+    seedBooking();
+  }, []);
   const [comments, setComments] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -526,8 +556,8 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return false;
   };
 
-  const submitReservation = async (res: Omit<TicketReservation, "id" | "reservedAt">) => {
-    const reservationId = `res-${Date.now()}`;
+  const submitReservation = async (res: Omit<TicketReservation, "id" | "reservedAt">, customId?: string) => {
+    const reservationId = customId || `TIX-${Math.floor(100000 + Math.random() * 900000)}`;
     const userUid = currentUser ? currentUser.uid : "guest";
     const bookingData: TicketReservation = {
       id: reservationId,
@@ -647,6 +677,61 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return false;
   };
 
+  const lookupTicket = async (id: string): Promise<TicketReservation | null> => {
+    if (!id || id.trim() === "") return null;
+    const cleanId = id.trim().toUpperCase();
+
+    // 1. Try server endpoint
+    try {
+      const res = await fetch(`/api/bookings/lookup/${cleanId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.booking) {
+          // If booking found, add to local state if missing to enhance UX
+          setBookings(prev => {
+            if (!prev.some(b => b.id === data.booking.id)) {
+              return [...prev, data.booking];
+            }
+            return prev;
+          });
+          return data.booking;
+        }
+      }
+    } catch (err) {
+      console.warn("API lookup error: ", err);
+    }
+
+    // 2. Try Firestore
+    try {
+      const docRef = doc(db, "bookings", cleanId);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const matchingDoc = docSnap.data() as TicketReservation;
+        setBookings(prev => {
+          if (!prev.some(b => b.id === matchingDoc.id)) {
+            return [...prev, matchingDoc];
+          }
+          return prev;
+        });
+        return matchingDoc;
+      }
+    } catch (err) {
+      console.warn("Firestore lookup error: ", err);
+    }
+
+    // 3. Try Local fallback list
+    const localStr = localStorage.getItem("ajeeb_bookings") || "[]";
+    try {
+      const localList = JSON.parse(localStr);
+      if (Array.isArray(localList)) {
+        const found = localList.find((b: any) => b.id.toUpperCase() === cleanId);
+        if (found) return found;
+      }
+    } catch (e) {}
+
+    return null;
+  };
+
   return (
     <AjeebDataContext.Provider
       value={{
@@ -668,7 +753,8 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         addComment,
         submitReservation,
         cancelReservation,
-        submitLead
+        submitLead,
+        lookupTicket
       }}
     >
       {children}

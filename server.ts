@@ -54,6 +54,22 @@ let showDetails = readStore("show_details.json", SHOW_DETAILS);
 let gallery = readStore("gallery.json", GALLERY_ITEMS);
 let authConfig = readStore("auth.json", defaultAuth);
 let bookings = readStore("bookings.json", []);
+if (!bookings.some((b: any) => b.id === "TIX-201600")) {
+  bookings.push({
+    id: "TIX-201600",
+    showId: "show-01",
+    showTitle: "Ajeeb-O-Gareeb Acoustic Monsoon",
+    date: "JUNE 15, 2026",
+    name: "Anirudra Paul",
+    email: "anirudrapaul764@gmail.com",
+    phone: "+91 98765 43210",
+    ticketsCount: 2,
+    reservedAt: "04/06/2026",
+    status: "confirmed",
+    uid: "guest"
+  });
+  writeStore("bookings.json", bookings);
+}
 let leads = readStore("leads.json", []);
 let commentsState = readStore("gallery_comments.json", {
   "gal-01": [
@@ -261,6 +277,17 @@ app.delete("/api/gallery/comments/:photoId/:commentId", (req, res) => {
 app.get("/api/bookings", (req, res) => {
   const data = readStore("bookings.json", []);
   res.json(data);
+});
+
+app.get("/api/bookings/lookup/:id", (req, res) => {
+  const { id } = req.params;
+  const data = readStore("bookings.json", []);
+  const found = data.find((b: any) => b.id.toLowerCase() === id.trim().toLowerCase());
+  if (found) {
+    res.json({ success: true, booking: found });
+  } else {
+    res.status(404).json({ success: false, error: "No reservation found with this Pass ID." });
+  }
 });
 
 app.post("/api/bookings", (req, res) => {

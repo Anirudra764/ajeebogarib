@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { MapPin, Calendar, Clock, Ticket, Sparkles, User, Mail, Phone, ShoppingBag, Download, Check, Trash2, Heart } from "lucide-react";
+import { MapPin, Calendar, Clock, Ticket, Sparkles, User, Mail, Phone, ShoppingBag, Download, Check, Trash2, Heart, Search } from "lucide-react";
 import { jsPDF } from "jspdf";
 import { useAjeebData } from "../context/AjeebDataContext";
 import { PerformanceShow, TicketReservation } from "../types";
@@ -15,10 +15,16 @@ export default function BookingTours() {
     signUpWithEmail,
     signInWithEmail,
     signInWithGoogle,
-    signOutUser
+    signOutUser,
+    lookupTicket
   } = useAjeebData();
   
   const [selectedShow, setSelectedShow] = useState<PerformanceShow | null>(null);
+  
+  // Search state variables
+  const [searchId, setSearchId] = useState("");
+  const [lookupError, setLookupError] = useState("");
+  const [lookupLoading, setLookupLoading] = useState(false);
   
   // Form input states
   const [userName, setUserName] = useState("");
@@ -304,12 +310,13 @@ export default function BookingTours() {
       status: "confirmed" as const
     };
 
+    const generatedId = `TIX-${Math.floor(100000 + Math.random() * 900000)}`;
+
     try {
-      const ok = await submitReservation(newResInput);
+      const ok = await submitReservation(newResInput, generatedId);
       if (ok) {
-        const tempId = `TIX-${Math.floor(100000 + Math.random() * 900000)}`;
         const simulatedTicket: TicketReservation = {
-          id: tempId,
+          id: generatedId,
           ...newResInput,
           reservedAt: new Date().toLocaleDateString("en-IN")
         };
@@ -325,9 +332,8 @@ export default function BookingTours() {
     } catch (err) {
       console.error("Reservation submit catch err:", err);
       // Fallback for extreme situations: show local ticket stub immediately, keeping experience bulletproof
-      const tempId = `TIX-${Math.floor(100000 + Math.random() * 900000)}`;
       const simulatedTicket: TicketReservation = {
-        id: tempId,
+        id: generatedId,
         ...newResInput,
         reservedAt: new Date().toLocaleDateString("en-IN")
       };
@@ -467,6 +473,61 @@ export default function BookingTours() {
 
           {/* User's reservation vault tracking list */}
           <div className="lg:col-span-4 space-y-6">
+            {/* Direct Ticket Retrieval Console */}
+            <div className="bg-[#0b0705] border border-[#302117] p-6 rounded-2xl shadow-xl">
+              <h3 className="font-serif text-lg font-bold text-[#e6b17a] mb-2 flex items-center gap-1.5">
+                <Search className="text-[#bc4123]" size={18} />
+                Retrieve Dynamic Pass
+              </h3>
+              <p className="text-xs text-[#d1bfae] mb-4">
+                Verify or retrieve tickets by ID (try <strong className="text-[#e6b17a] font-mono select-all">TIX-201600</strong>) to view, download, or sync details instantly.
+              </p>
+              
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g. TIX-201600"
+                  value={searchId}
+                  onChange={(e) => {
+                    setSearchId(e.target.value.toUpperCase());
+                    setLookupError("");
+                  }}
+                  className="bg-[#140e0a] border border-[#3e2c1f] rounded-lg px-3.5 py-2.5 text-xs text-[#f7ede2] font-mono placeholder-[#5a4332] focus:outline-none focus:border-[#bc4123] flex-1 tracking-wider uppercase"
+                  id="pass-id-search-input"
+                />
+                <button
+                  onClick={async () => {
+                    if (!searchId.trim()) return;
+                    setLookupLoading(true);
+                    setLookupError("");
+                    try {
+                      const res = await lookupTicket(searchId.trim());
+                      if (res) {
+                        setSearchId("");
+                        setLookupError("");
+                      } else {
+                        setLookupError("Verify pass ID: Code not found in database.");
+                      }
+                    } catch (e) {
+                      setLookupError("Network error querying ticket records.");
+                    } finally {
+                      setLookupLoading(false);
+                    }
+                  }}
+                  disabled={lookupLoading}
+                  className="bg-[#bc4123] hover:bg-[#ce4c2a] text-white text-xs font-bold px-4 py-2.5 rounded-lg shadow disabled:opacity-50 transition-all cursor-pointer whitespace-nowrap"
+                  id="pass-id-search-button"
+                >
+                  {lookupLoading ? "Looking up..." : "Retrieve"}
+                </button>
+              </div>
+              {lookupError && (
+                <p className="text-[11px] text-red-400 font-mono mt-2" id="search-error-msg">
+                  ⚠️ {lookupError}
+                </p>
+              )}
+            </div>
+
             <div className="bg-[#0b0705] border border-[#302117] p-6 rounded-2xl">
               <h3 className="font-serif text-lg font-bold text-[#e6b17a] mb-2 flex items-center gap-1.5">
                 <Ticket className="text-[#bc4123]" size={18} />
