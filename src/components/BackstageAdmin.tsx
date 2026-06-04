@@ -95,6 +95,72 @@ export default function BackstageAdmin() {
   const [galCategory, setGalCategory] = useState<"live" | "bts" | "promo" | "quote">("live");
   const [galCaption, setGalCaption] = useState("");
 
+  // System upload helper states
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
+  const handleLocalImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Please select a valid image file.");
+      return;
+    }
+
+    setUploadError("");
+    setIsUploadingImage(true);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        // Create canvas to resize the image
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        // Constraint max size to 800px width/height to keep Base64 footprint perfectly tiny inside Firestore Document limit
+        const MAX_SIZE = 800;
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height = Math.round((height * MAX_SIZE) / width);
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width = Math.round((width * MAX_SIZE) / height);
+            height = MAX_SIZE;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          // Compress quality slightly to ensure tiny document size (~60KB) which is well within 1MB restriction
+          const compressedBase64 = canvas.toDataURL("image/jpeg", 0.75);
+          setGalUrl(compressedBase64);
+        } else {
+          setGalUrl(event.target?.result as string || "");
+        }
+        setIsUploadingImage(false);
+      };
+      img.onerror = () => {
+        setUploadError("Failed to load image for processing.");
+        setIsUploadingImage(false);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.onerror = () => {
+      setUploadError("Error reading file.");
+      setIsUploadingImage(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Feedback flags
   const [editorSuccess, setEditorSuccess] = useState(false);
   const [gallerySuccess, setGallerySuccess] = useState(false);
@@ -916,15 +982,75 @@ export default function BackstageAdmin() {
                             </div>
 
                             <div className="space-y-1">
-                              <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Media URL Link</label>
+                              <div className="flex items-center justify-between">
+                                <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Media URL / Local Image</label>
+                                <span className="text-[9px] text-[#a27b5c]/70 font-mono tracking-wider">URL LINK OR LOCAL FILE</span>
+                              </div>
                               <input
-                                type="url"
+                                type="text"
                                 required
-                                placeholder="https://images.unsplash.com/..."
+                                placeholder="https://images.unsplash.com/... or choose file below"
                                 value={galUrl}
                                 onChange={(e) => setGalUrl(e.target.value)}
                                 className="w-full text-xs bg-[#070504] border border-[#302117] text-white px-3 py-2 rounded focus:outline-none"
                               />
+
+                              {/* Drag & Drop or Select Local File Uploader */}
+                              <div className="mt-1.5">
+                                <label className="relative flex flex-col items-center justify-center border border-dashed border-[#302117] hover:border-[#bc4123] rounded p-3 bg-[#0d0907]/60 cursor-pointer transition-colors group">
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleLocalImageUpload}
+                                    className="hidden"
+                                  />
+                                  {isUploadingImage ? (
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-3.5 h-3.5 border border-[#bc4123] border-t-transparent rounded-full animate-spin"></div>
+                                      <span className="text-[10px] text-[#e6b17a] font-mono">Compressing image...</span>
+                                    </div>
+                                  ) : galUrl && galUrl.startsWith("data:image") ? (
+                                    <div className="flex items-center gap-2.5 w-full">
+                                      <img
+                                        src={galUrl}
+                                        alt="Local upload preview"
+                                        className="w-8 h-8 object-cover rounded border border-[#302117]"
+                                      />
+                                      <div className="text-left overflow-hidden">
+                                        <p className="text-[9.5px] font-bold text-green-400 font-mono flex items-center gap-1">
+                                          <Check size={10} /> Local File Loaded
+                                        </p>
+                                        <p className="text-[8.5px] text-gray-500 font-mono truncate max-w-[170px]">
+                                          Optimized and ready for saving!
+                                        </p>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          setGalUrl("");
+                                        }}
+                                        className="ml-auto text-red-400 hover:text-red-500 text-[10px] font-mono px-1.5 py-0.5 bg-red-500/10 hover:bg-red-500/20 rounded"
+                                      >
+                                        Remove
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="text-center">
+                                      <p className="text-[10.5px] font-bold text-[#e6b17a] group-hover:text-[#bc4123] transition-colors">
+                                        Upload from System Gallery
+                                      </p>
+                                      <p className="text-[9px] text-gray-500 font-mono mt-0.5">
+                                        Compresses giant files automatically
+                                      </p>
+                                    </div>
+                                  )}
+                                </label>
+                                {uploadError && (
+                                  <p className="text-[9.5px] text-red-400 font-mono mt-1">{uploadError}</p>
+                                )}
+                              </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
