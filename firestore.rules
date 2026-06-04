@@ -19,7 +19,7 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-        (request.auth.token.email == "anirudrapaul31@gmail.com" && request.auth.token.email_verified == true)
+        (request.auth.token.email == "anirudrapaul764@gmail.com" && request.auth.token.email_verified == true)
       );
     }
 
@@ -107,7 +107,7 @@ service cloud.firestore {
     // Admin lookup helper collection
     match /admins/{adminId} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && (request.auth.token.email == "anirudrapaul31@gmail.com" || isAdmin());
+      allow write: if isSignedIn() && (request.auth.token.email == "anirudrapaul764@gmail.com" || isAdmin());
     }
 
     // Bookings collection rules

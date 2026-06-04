@@ -195,7 +195,7 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setCurrentUser(user);
       setAuthLoading(false);
 
-      if (user && user.email === "anirudrapaul31@gmail.com") {
+      if (user && user.email === "anirudrapaul764@gmail.com") {
         // Enforce admins lookup path so that isAdmin() rule returns true instantly
         try {
           await setDoc(doc(db, "admins", user.uid), {
@@ -293,7 +293,7 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     let unsubLeads = () => {};
 
     if (currentUser) {
-      const isAdminUser = currentUser.email === "anirudrapaul31@gmail.com";
+      const isAdminUser = currentUser.email === "anirudrapaul764@gmail.com";
 
       // 1. Live bookings: Admin tracks entire collection; spectators only stream their private subset
       const bookingsRef = collection(db, "bookings");
@@ -351,7 +351,7 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
     await updateProfile(cred.user, { displayName: name });
     try {
-      const isSpecAdmin = email === "anirudrapaul31@gmail.com";
+      const isSpecAdmin = email === "anirudrapaul764@gmail.com";
       await setDoc(doc(db, "users", cred.user.uid), {
         uid: cred.user.uid,
         name,
@@ -371,7 +371,7 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return cred.user;
     } catch (err: any) {
       // In case admin hasn't signed up yet, automatically register them!
-      if (email === "anirudrapaul31@gmail.com" && pass === "987654") {
+      if (email === "anirudrapaul764@gmail.com" && pass === "987654") {
         if (err.code === "auth/user-not-found" || err.code === "auth/invalid-credential" || err.code === "auth/cannot-find-user") {
           console.log("[Authenticating Admin] Auto-registering admin account.");
           return await signUpWithEmail(email, pass, "Super Admin");
@@ -386,7 +386,7 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const provider = new GoogleAuthProvider();
       const cred = await signInWithPopup(auth, provider);
       try {
-        const isSpecAdmin = cred.user.email === "anirudrapaul31@gmail.com";
+        const isSpecAdmin = cred.user.email === "anirudrapaul764@gmail.com";
         await setDoc(doc(db, "users", cred.user.uid), {
           uid: cred.user.uid,
           name: cred.user.displayName || "Spectator Guest",

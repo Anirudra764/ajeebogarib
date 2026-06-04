@@ -24,7 +24,7 @@ export default function BackstageAdmin() {
   const [activeTab, setActiveTab] = useState<"shows" | "reservations" | "gallery" | "leads" | "settings">("shows");
 
   // Admin credentials auth form states
-  const [emailInput, setEmailInput] = useState("anirudrapaul31@gmail.com");
+  const [emailInput, setEmailInput] = useState("anirudrapaul764@gmail.com");
   const [passwordInput, setPasswordInput] = useState("987654");
   const [authError, setAuthError] = useState("");
   const [isSignLoading, setIsSignLoading] = useState(false);
@@ -53,7 +53,7 @@ export default function BackstageAdmin() {
   } = useAjeebData();
 
   // Determine administrative state
-  const isAuthorizedAdmin = currentUser && currentUser.email === "anirudrapaul31@gmail.com";
+  const isAuthorizedAdmin = currentUser && currentUser.email === "anirudrapaul764@gmail.com";
 
   // Form input states for creating a new show
   const [showTitle, setShowTitle] = useState("");
@@ -512,7 +512,7 @@ export default function BackstageAdmin() {
                   </form>
 
                   <p className="text-[10px] text-[#a27b5c] italic tracking-normal border border-[#3a2212]/40 bg-[#160f0b]/40 rounded p-2.5">
-                    Admin access configured: <span className="font-bold text-[#e6b17a]">anirudrapaul31@gmail.com</span> with password <span className="font-bold text-[#e6b17a]">987654</span>. Enter credentials to log in!
+                    Admin access configured: <span className="font-bold text-[#e6b17a]">anirudrapaul764@gmail.com</span> with password <span className="font-bold text-[#e6b17a]">987654</span>. Enter credentials to log in!
                   </p>
                 </div>
               ) : (
