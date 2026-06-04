@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Menu, X, Instagram, Youtube, Sparkles } from "lucide-react";
+import { Menu, X, Instagram, Youtube, Sparkles, User } from "lucide-react";
 import { useAjeebData } from "../context/AjeebDataContext";
+import AuthModal from "./AuthModal";
 
 interface HeaderProps {
   activeSection: string;
@@ -11,7 +12,9 @@ interface HeaderProps {
 export default function Header({ activeSection, scrollToSection }: HeaderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const { showDetails } = useAjeebData();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalInitialTab, setAuthModalInitialTab] = useState<"signin" | "signup">("signin");
+  const { showDetails, currentUser } = useAjeebData();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -87,6 +90,35 @@ export default function Header({ activeSection, scrollToSection }: HeaderProps) 
 
           {/* Right Action Widgets */}
           <div className="hidden lg:flex items-center space-x-4">
+            {currentUser ? (
+              <button
+                onClick={() => {
+                  setAuthModalInitialTab("signin");
+                  setIsAuthModalOpen(true);
+                }}
+                className="flex items-center space-x-2 text-xs text-[#e6b17a] bg-[#1a110b] hover:bg-[#2b170d] border border-[#d28b50]/30 hover:border-[#d48c52]/60 px-3 py-2 rounded-full transition-all font-mono"
+                id="header-vault-btn"
+                title="Open Spectator Vault"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span className="truncate max-w-[85px]">
+                  {(currentUser.displayName || "Spectator").split(" ")[0]}
+                </span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setAuthModalInitialTab("signin");
+                  setIsAuthModalOpen(true);
+                }}
+                className="flex items-center space-x-1 px-3.5 py-1.5 rounded-full text-xs font-semibold text-[#d1bfae] hover:text-[#e6b17a] border border-[#483325] hover:bg-[#1a0f0a] transition-all cursor-pointer"
+                id="header-signin-btn"
+              >
+                <User size={12} className="text-[#a27b5c]" />
+                <span>Vault Login</span>
+              </button>
+            )}
+
             <a
               href="https://www.instagram.com/ajeebogareeblive/"
               target="_blank"
@@ -146,6 +178,34 @@ export default function Header({ activeSection, scrollToSection }: HeaderProps) 
             className="md:hidden bg-[#0c0806] border-b border-[#302015] overflow-hidden"
           >
             <div className="px-4 pt-2 pb-6 space-y-2">
+              {currentUser ? (
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    setAuthModalInitialTab("signin");
+                    setIsAuthModalOpen(true);
+                  }}
+                  className="w-full text-left px-4 py-2.5 rounded-md text-base font-medium text-[#e6b17a] bg-[#22120a] border border-[#d28b50]/20 flex items-center gap-2 mb-2"
+                  id="mob-nav-vault"
+                >
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>My Vault ({currentUser.displayName || "Spectator"})</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    setAuthModalInitialTab("signin");
+                    setIsAuthModalOpen(true);
+                  }}
+                  className="w-full text-left px-4 py-2.5 rounded-md text-base font-medium text-[#d1bfae] hover:bg-[#1a0f0a] hover:text-[#e6b17a] border border-[#3e2c1f]/40 flex items-center gap-2 mb-2"
+                  id="mob-nav-signin"
+                >
+                  <User size={16} className="text-[#a27b5c]" />
+                  <span>Vault Login / Register</span>
+                </button>
+              )}
+
               {navItems.map((item) => (
                 <button
                   key={item.id}
@@ -190,6 +250,12 @@ export default function Header({ activeSection, scrollToSection }: HeaderProps) 
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        initialTab={authModalInitialTab}
+      />
     </header>
   );
 }

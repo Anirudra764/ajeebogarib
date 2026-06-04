@@ -6,11 +6,19 @@ import { GalleryItem } from "../types";
 
 export default function GallerySection() {
   const [activeTab, setActiveTab] = useState<"all" | "live" | "bts" | "promo" | "quote">("all");
-  const { gallery: items, comments: commentsStore, likeGalleryItem, addComment } = useAjeebData();
+  const { gallery: items, comments: commentsStore, likeGalleryItem, addComment, currentUser } = useAjeebData();
   const [activeModalItem, setActiveModalItem] = useState<GalleryItem | null>(null);
   
   const [newCommentUser, setNewCommentUser] = useState("");
   const [newCommentText, setNewCommentText] = useState("");
+
+  useEffect(() => {
+    if (currentUser) {
+      setNewCommentUser(currentUser.displayName || currentUser.email?.split("@")[0] || "");
+    } else {
+      setNewCommentUser("");
+    }
+  }, [currentUser]);
 
   const filteredItems = activeTab === "all" 
     ? items 

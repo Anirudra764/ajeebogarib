@@ -7,11 +7,13 @@ import GallerySection from "./components/GallerySection";
 import BookingTours from "./components/BookingTours";
 import ParchmentWall from "./components/ParchmentWall";
 import ContactForm from "./components/ContactForm";
+import BackstageConsole from "./components/BackstageConsole";
 import { useAjeebData } from "./context/AjeebDataContext";
 import { Instagram, Youtube, Sparkles, Heart, Anchor, Coffee } from "lucide-react";
 
 export default function App() {
   const [activeSection, setActiveSection] = useState("hero");
+  const [isBackstageOpen, setIsBackstageOpen] = useState(false);
   const { showDetails } = useAjeebData();
 
   // Intersection Observer to track active section dynamically
@@ -159,10 +161,22 @@ export default function App() {
             <p className="flex items-center justify-center gap-1">
               Crafted in Jamshedpur, Jharkhand • Honoring her late father's legacy of resilience.
             </p>
+            <p className="pt-2 text-center">
+              <button
+                type="button"
+                onClick={() => setIsBackstageOpen(true)}
+                className="text-[10px] text-[#a27b5c]/60 hover:text-[#e6b17a] font-mono uppercase tracking-widest transition-colors cursor-pointer"
+                id="footer-backstage-btn"
+              >
+                ✦ Backstage Desk (Admin) ✦
+              </button>
+            </p>
           </div>
 
         </div>
       </footer>
+
+      <BackstageConsole isOpen={isBackstageOpen} onClose={() => setIsBackstageOpen(false)} />
     </div>
   );
 }

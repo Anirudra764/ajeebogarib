@@ -34,6 +34,7 @@ export default function BookingTours() {
   const [authPassword, setAuthPassword] = useState("");
   const [authName, setAuthName] = useState("");
   const [authError, setAuthError] = useState("");
+  const [authSuccess, setAuthSuccess] = useState("");
 
   const generatePDFTicket = (booking: TicketReservation) => {
     const show = shows.find(s => s.id === booking.showId) || selectedShow;
@@ -251,6 +252,7 @@ export default function BookingTours() {
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError("");
+    setAuthSuccess("");
     try {
       if (emailTab === "signin") {
         await signInWithEmail(authEmail, authPassword);
@@ -259,7 +261,23 @@ export default function BookingTours() {
           setAuthError("Name is required to register.");
           return;
         }
+
+        // Strict password validation (Compulsory Setting feature)
+        const isLengthOk = authPassword.length >= 6;
+        const isUpperOk = /[A-Z]/.test(authPassword);
+        const isLowerOk = /[a-z]/.test(authPassword);
+        const isDigitOk = /[0-9]/.test(authPassword);
+        const isSpecialOk = /[^a-zA-Z0-9]/.test(authPassword);
+        
+        if (!isLengthOk || !isUpperOk || !isLowerOk || !isDigitOk || !isSpecialOk) {
+          setAuthError("Password fails compulsory requirements. It must have 6+ characters, 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special symbol.");
+          return;
+        }
+
         await signUpWithEmail(authEmail, authPassword, authName.trim());
+        setAuthSuccess("Account created successfully with a compulsory-strength password! Please sign in using your email and password to book resources.");
+        setEmailTab("signin");
+        setAuthPassword("");
       }
     } catch (err: any) {
       setAuthError(err?.message || "Failed to authenticate.");
@@ -730,6 +748,12 @@ export default function BookingTours() {
                         </div>
                       )}
 
+                      {authSuccess && (
+                        <div className="bg-emerald-950/50 border border-emerald-800 text-emerald-300 text-[10px] px-3 py-2 rounded-lg text-center font-mono">
+                          {authSuccess}
+                        </div>
+                      )}
+
                       {emailTab === "signup" && (
                         <div className="space-y-1">
                           <label className="text-[10px] font-mono font-semibold text-[#a27b5c] uppercase block text-left">
@@ -774,6 +798,44 @@ export default function BookingTours() {
                         />
                       </div>
 
+                      {emailTab === "signup" && (
+                        <div className="bg-[#120a06] border border-[#3e2719] p-3 rounded-lg text-[10px] space-y-1.5 text-left">
+                          <p className="font-semibold text-[#e6b17a] uppercase tracking-wider font-mono text-[9px]">Compulsory Password Standards:</p>
+                          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[#d1bfae] font-mono text-[9px]">
+                            <span className="flex items-center gap-1.5">
+                              <span className={authPassword.length >= 6 ? "text-emerald-500 font-bold" : "text-neutral-600"}>
+                                {authPassword.length >= 6 ? "✓" : "✗"}
+                              </span>
+                              Min. 6 chars
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <span className={/[A-Z]/.test(authPassword) ? "text-emerald-500 font-bold" : "text-neutral-600"}>
+                                {/[A-Z]/.test(authPassword) ? "✓" : "✗"}
+                              </span>
+                              1 Uppercase letter
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <span className={/[a-z]/.test(authPassword) ? "text-emerald-500 font-bold" : "text-neutral-600"}>
+                                {/[a-z]/.test(authPassword) ? "✓" : "✗"}
+                              </span>
+                              1 Lowercase letter
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <span className={/[0-9]/.test(authPassword) ? "text-emerald-500 font-bold" : "text-neutral-600"}>
+                                {/[0-9]/.test(authPassword) ? "✓" : "✗"}
+                              </span>
+                              1 Number
+                            </span>
+                            <span className="flex items-center gap-1.5 col-span-2">
+                              <span className={/[^a-zA-Z0-9]/.test(authPassword) ? "text-emerald-500 font-bold" : "text-neutral-600"}>
+                                {/[^a-zA-Z0-9]/.test(authPassword) ? "✓" : "✗"}
+                              </span>
+                              1 Special character (@,$,!,etc.)
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
                       <button
                         type="submit"
                         className="w-full bg-[#bc4123] hover:bg-[#ce4c2a] text-white text-xs font-bold py-3 rounded-lg mt-2 cursor-pointer uppercase font-mono tracking-wider transition-all"
@@ -782,8 +844,8 @@ export default function BookingTours() {
                       </button>
                     </form>
 
-                    {/* Toggle email auth tab */}
-                    <div className="flex justify-between items-center text-xs pt-1">
+                    {/* Toggle email auth tab - guest login removed since password configuration is compulsory */}
+                    <div className="flex justify-center text-xs pt-1.5 border-t border-[#3e2c1f]/40">
                       <button
                         type="button"
                         onClick={() => {
@@ -791,16 +853,11 @@ export default function BookingTours() {
                           setAuthError("");
                         }}
                         className="text-[#e6b17a] hover:underline"
+                        id="toggle-checkout-auth-button"
                       >
-                        {emailTab === "signin" ? "Don't have an account? Sign Up" : "Back to Sign In"}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setAuthMode("details")}
-                        className="text-[#a27b5c] hover:text-white underline font-medium"
-                      >
-                        Continue as Guest →
+                        {emailTab === "signin" 
+                          ? "New spectator? Create account and compulsory password" 
+                          : "Already have a secure account? Sign In"}
                       </button>
                     </div>
                   </div>

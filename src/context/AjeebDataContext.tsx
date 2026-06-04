@@ -79,7 +79,6 @@ interface AjeebContextType {
   shows: PerformanceShow[];
   gallery: GalleryItem[];
   bookings: TicketReservation[];
-  leads: ContactMessage[];
   comments: Record<string, any[]>;
   loading: boolean;
   refreshAll: () => Promise<void>;
@@ -92,22 +91,13 @@ interface AjeebContextType {
   signInWithGoogle: () => Promise<User>;
   signOutUser: () => Promise<void>;
 
-  // Update handlers
-  updateShowDetails: (newDetails: typeof SHOW_DETAILS) => Promise<boolean>;
-  updatePerformerBio: (newBio: typeof PERFORMER_BIO) => Promise<boolean>;
-  saveShow: (show: PerformanceShow) => Promise<boolean>;
-  deleteShow: (id: string) => Promise<boolean>;
-  saveGalleryItem: (item: Partial<GalleryItem>) => Promise<boolean>;
-  deleteGalleryItem: (id: string) => Promise<boolean>;
   likeGalleryItem: (id: string) => Promise<void>;
   
   // Interactive handlers
   addComment: (photoId: string, user: string, text: string) => Promise<boolean>;
-  deleteComment: (photoId: string, commentId: string) => Promise<boolean>;
   submitReservation: (res: Omit<TicketReservation, "id" | "reservedAt">) => Promise<boolean>;
   cancelReservation: (id: string) => Promise<boolean>;
   submitLead: (lead: Omit<ContactMessage, "sentAt">) => Promise<boolean>;
-  deleteLead: (id: string) => Promise<boolean>;
 }
 
 const AjeebDataContext = createContext<AjeebContextType | undefined>(undefined);
@@ -118,7 +108,6 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [shows, setShows] = useState<PerformanceShow[]>(UPCOMING_EVENTS);
   const [gallery, setGallery] = useState<GalleryItem[]>(GALLERY_ITEMS);
   const [bookings, setBookings] = useState<TicketReservation[]>([]);
-  const [leads, setLeads] = useState<ContactMessage[]>([]);
   const [comments, setComments] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -126,10 +115,10 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
 
-  // Auto seeding when administrator logs in
-  const checkAndSeedDatabase = async (adminUid: string) => {
+  // Auto seeding when user/spectator logs in or database is empty
+  const checkAndSeedDatabase = async (uid: string) => {
     try {
-      console.log("[Firebase Seed] Admin logged in. Verifying database seeds.");
+      console.log("[Firebase Seed] Verifying database seeds.");
       
       // 1. Seed Show Details
       const showDetailsDoc = await getDoc(doc(db, "settings", "show_details"));
@@ -192,25 +181,73 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Monitor auth changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user && (window as any).isRegistering) {
+        await firebaseSignOut(auth);
+        setCurrentUser(null);
+        setAuthLoading(false);
+        return;
+      }
+
       setCurrentUser(user);
       setAuthLoading(false);
 
-      if (user && user.email === "anirudrapaul764@gmail.com") {
-        // Enforce admins lookup path so that isAdmin() rule returns true instantly
-        try {
-          await setDoc(doc(db, "admins", user.uid), {
-            uid: user.uid,
-            email: user.email,
-            assignedAt: new Date().toISOString()
-          }, { merge: true });
-        } catch (adminSetErr) {
-          console.warn("[Admins write warning]", adminSetErr);
-        }
+      if (user) {
         // Run auto-seeder to ensure collections exist matching full-stack schemas
         await checkAndSeedDatabase(user.uid);
       }
     });
     return () => unsubscribe();
+  }, []);
+
+  // Fetch initial master parameters from Full-stack Express APIs on startup
+  const fetchBackendData = async () => {
+    try {
+      // 1. Fetch show-details
+      const resDetails = await fetch("/api/show-details");
+      if (resDetails.ok) {
+        const dataDetails = await resDetails.json();
+        setShowDetails(dataDetails);
+      }
+      
+      // 2. Fetch bio
+      const resBio = await fetch("/api/bio");
+      if (resBio.ok) {
+        const dataBio = await resBio.json();
+        setPerformerBio(dataBio);
+      }
+      
+      // 3. Fetch shows
+      const resShows = await fetch("/api/shows");
+      if (resShows.ok) {
+        const dataShows = await resShows.json();
+        if (Array.isArray(dataShows)) {
+          dataShows.sort((a, b) => a.date.localeCompare(b.date));
+          setShows(dataShows);
+        }
+      }
+      
+      // 4. Fetch gallery
+      const resGallery = await fetch("/api/gallery");
+      if (resGallery.ok) {
+        const dataGallery = await resGallery.json();
+        if (Array.isArray(dataGallery)) {
+          setGallery(dataGallery);
+        }
+      }
+      
+      // 5. Fetch comments
+      const resComments = await fetch("/api/gallery/comments");
+      if (resComments.ok) {
+        const dataComments = await resComments.json();
+        setComments(dataComments);
+      }
+    } catch (error) {
+      console.warn("Backend API fetching error. Running side-by-side with Firebase: ", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchBackendData();
   }, []);
 
   // Set up live Firestore synchronization listeners
@@ -290,16 +327,11 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Dynamic database listeners for user-specific data and offline guest fallback
   useEffect(() => {
     let unsubBookings = () => {};
-    let unsubLeads = () => {};
 
     if (currentUser) {
-      const isAdminUser = currentUser.email === "anirudrapaul764@gmail.com";
-
-      // 1. Live bookings: Admin tracks entire collection; spectators only stream their private subset
+      // 1. Live bookings: spectators only stream their private subset
       const bookingsRef = collection(db, "bookings");
-      const bookingsQuery = isAdminUser 
-        ? bookingsRef 
-        : query(bookingsRef, where("uid", "==", currentUser.uid));
+      const bookingsQuery = query(bookingsRef, where("uid", "==", currentUser.uid));
 
       unsubBookings = onSnapshot(bookingsQuery, (snap) => {
         const items: TicketReservation[] = [];
@@ -310,21 +342,6 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }, (err) => {
         console.warn("User bookings list snap error:", err);
       });
-
-      // 2. Leads catalog: Admin only
-      if (isAdminUser) {
-        unsubLeads = onSnapshot(collection(db, "leads"), (snap) => {
-          const items: ContactMessage[] = [];
-          snap.forEach((docSnap) => {
-            items.push(docSnap.data() as ContactMessage);
-          });
-          setLeads(items);
-        }, (err) => {
-          console.warn("Leads list snapshot error:", err);
-        });
-      } else {
-        setLeads([]);
-      }
     } else {
       // Unsigned Guest: Retrieve cached local bookings
       const localStr = localStorage.getItem("ajeeb_bookings");
@@ -338,31 +355,52 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       } else {
         setBookings([]);
       }
-      setLeads([]);
     }
 
     return () => {
       unsubBookings();
-      unsubLeads();
     };
   }, [currentUser]);
 
   const signUpWithEmail = async (email: string, pass: string, name: string) => {
-    const cred = await createUserWithEmailAndPassword(auth, email, pass);
-    await updateProfile(cred.user, { displayName: name });
     try {
-      const isSpecAdmin = email === "anirudrapaul764@gmail.com";
-      await setDoc(doc(db, "users", cred.user.uid), {
-        uid: cred.user.uid,
-        name,
-        email,
-        role: isSpecAdmin ? "admin" : "viewer",
-        registeredAt: new Date().toISOString()
-      });
-    } catch (err) {
-      console.warn("Firestore user profile save error: ", err);
+      (window as any).isRegistering = true;
+      const cred = await createUserWithEmailAndPassword(auth, email, pass);
+      await updateProfile(cred.user, { displayName: name });
+      await cred.user.reload();
+      const updatedUser = auth.currentUser;
+      
+      try {
+        await setDoc(doc(db, "users", cred.user.uid), {
+          uid: cred.user.uid,
+          name,
+          email,
+          role: "viewer",
+          registeredAt: new Date().toISOString()
+        });
+      } catch (err) {
+        console.warn("Firestore user profile save error: ", err);
+      }
+      
+      // Force sign-out right after creation so the user must log in manually to continue as requested
+      await firebaseSignOut(auth);
+      (window as any).isRegistering = false;
+      setCurrentUser(null);
+      
+      return updatedUser || cred.user;
+    } catch (err: any) {
+      (window as any).isRegistering = false;
+      if (err.code === "auth/email-already-in-use") {
+        throw new Error("This email is already registered. If you already have an account, please switch to 'Sign In' or use 'Continue with Google Account'.");
+      }
+      if (err.code === "auth/weak-password") {
+        throw new Error("Password is too weak. Please enter at least 6 characters.");
+      }
+      if (err.code === "auth/invalid-email") {
+        throw new Error("The email address is badly formatted. Please enter a valid email address.");
+      }
+      throw new Error(err.message || "An unexpected registration error occurred.");
     }
-    return cred.user;
   };
 
   const signInWithEmail = async (email: string, pass: string) => {
@@ -370,14 +408,13 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const cred = await signInWithEmailAndPassword(auth, email, pass);
       return cred.user;
     } catch (err: any) {
-      // In case admin hasn't signed up yet, automatically register them!
-      if (email === "anirudrapaul764@gmail.com" && pass === "987654") {
-        if (err.code === "auth/user-not-found" || err.code === "auth/invalid-credential" || err.code === "auth/cannot-find-user") {
-          console.log("[Authenticating Admin] Auto-registering admin account.");
-          return await signUpWithEmail(email, pass, "Super Admin");
-        }
+      if (err.code === "auth/invalid-credential" || err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
+        throw new Error("Invalid email or password. If you signed up via Google, please click 'Continue with Google Account'.");
       }
-      throw err;
+      if (err.code === "auth/invalid-email") {
+        throw new Error("The email address is badly formatted. Please enter a valid email address.");
+      }
+      throw new Error(err.message || "An unexpected sign-in error occurred.");
     }
   };
 
@@ -386,12 +423,11 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const provider = new GoogleAuthProvider();
       const cred = await signInWithPopup(auth, provider);
       try {
-        const isSpecAdmin = cred.user.email === "anirudrapaul764@gmail.com";
         await setDoc(doc(db, "users", cred.user.uid), {
           uid: cred.user.uid,
           name: cred.user.displayName || "Spectator Guest",
           email: cred.user.email || "",
-          role: isSpecAdmin ? "admin" : "viewer",
+          role: "viewer",
           registeredAt: new Date().toISOString()
         }, { merge: true });
       } catch (err) {
@@ -404,96 +440,38 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           `Unauthorized Domain: Please add "${window.location.hostname}" and the preview domains to your Firebase Authentication Settings -> Authorized Domains.`
         );
       }
+      if (err?.code === "auth/popup-closed-by-user" || err?.code === "auth/cancelled-popup-request") {
+        throw new Error(
+          `Google link was closed or blocked. Since this application runs in a secure sandbox frame, browser popup blockers might reject Google's window. Please enable popups, open this app in a new tab, or use the secure Email & Password form below.`
+        );
+      }
       throw err;
     }
   };
 
   const signOutUser = async () => {
     await firebaseSignOut(auth);
+    setCurrentUser(null);
+    setBookings([]);
+    // Clear previous loaded user caches to prevent leakage of credentials or data across accounts
+    localStorage.removeItem("ajeeb_bookings");
+    sessionStorage.clear();
+    console.log("Cleared all previously loaded user data successfully on sign out.");
   };
 
   const refreshAll = async () => {
-    // Relying on automatic onSnapshot sync above!
-  };
-
-  const updateShowDetails = async (newDetails: typeof SHOW_DETAILS) => {
-    const path = "settings/show_details";
-    try {
-      await setDoc(doc(db, "settings", "show_details"), {
-        id: "show_details",
-        data: newDetails
-      });
-      return true;
-    } catch (e) {
-      handleFirestoreError(e, OperationType.WRITE, path);
-    }
-    return false;
-  };
-
-  const updatePerformerBio = async (newBio: typeof PERFORMER_BIO) => {
-    const path = "settings/performer_bio";
-    try {
-      await setDoc(doc(db, "settings", "performer_bio"), {
-        id: "performer_bio",
-        data: newBio
-      });
-      return true;
-    } catch (e) {
-      handleFirestoreError(e, OperationType.WRITE, path);
-    }
-    return false;
-  };
-
-  const saveShow = async (show: PerformanceShow) => {
-    const path = `shows/${show.id}`;
-    try {
-      await setDoc(doc(db, "shows", show.id), show);
-      return true;
-    } catch (e) {
-      handleFirestoreError(e, OperationType.WRITE, path);
-    }
-    return false;
-  };
-
-  const deleteShow = async (id: string) => {
-    const path = `shows/${id}`;
-    try {
-      await deleteDoc(doc(db, "shows", id));
-      return true;
-    } catch (e) {
-      handleFirestoreError(e, OperationType.DELETE, path);
-    }
-    return false;
-  };
-
-  const saveGalleryItem = async (item: Partial<GalleryItem>) => {
-    if (!item.id) {
-      item.id = `gal-${Date.now()}`;
-      item.likes = 0;
-      item.comments = 0;
-    }
-    const path = `gallery/${item.id}`;
-    try {
-      await setDoc(doc(db, "gallery", item.id), item);
-      return true;
-    } catch (e) {
-      handleFirestoreError(e, OperationType.WRITE, path);
-    }
-    return false;
-  };
-
-  const deleteGalleryItem = async (id: string) => {
-    const path = `gallery/${id}`;
-    try {
-      await deleteDoc(doc(db, "gallery", id));
-      return true;
-    } catch (e) {
-      handleFirestoreError(e, OperationType.DELETE, path);
-    }
-    return false;
+    await fetchBackendData();
   };
 
   const likeGalleryItem = async (id: string) => {
+    // 1. Call Full-Stack Backend API
+    try {
+      await fetch(`/api/gallery/${id}/like`, { method: "POST" });
+    } catch (err) {
+      console.warn("Backend dynamic like failed: ", err);
+    }
+
+    // 2. Hydrate/update Firebase Firestore real-time engine
     const path = `gallery/${id}`;
     try {
       const match = gallery.find(g => g.id === id);
@@ -519,9 +497,20 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
     const path = `gallery_comments/${commentId}`;
     try {
+      // 1. Store in Full-Stack Backend API
+      try {
+        await fetch("/api/gallery/comments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ photoId, user, text })
+        });
+      } catch (err) {
+        console.warn("Backend post comment failed: ", err);
+      }
+
+      // 2. Hydrate/update Firebase Firestore database
       await setDoc(doc(db, "gallery_comments", commentId), commentData);
       
-      // Update comment count on gallery item
       const item = gallery.find(g => g.id === photoId);
       if (item) {
         const itemCommentsCount = (comments[photoId]?.length || 0) + 1;
@@ -533,27 +522,6 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return true;
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, path);
-    }
-    return false;
-  };
-
-  const deleteComment = async (photoId: string, commentId: string) => {
-    const path = `gallery_comments/${commentId}`;
-    try {
-      await deleteDoc(doc(db, "gallery_comments", commentId));
-
-      // Decrement comment count on gallery item
-      const item = gallery.find(g => g.id === photoId);
-      if (item) {
-        const itemCommentsCount = Math.max(0, (comments[photoId]?.length || 1) - 1);
-        await setDoc(doc(db, "gallery", photoId), {
-          ...item,
-          comments: itemCommentsCount
-        });
-      }
-      return true;
-    } catch (e) {
-      handleFirestoreError(e, OperationType.DELETE, path);
     }
     return false;
   };
@@ -576,9 +544,21 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
     const path = `bookings/${reservationId}`;
     try {
+      // 1. Send to Full-Stack Backend API
+      try {
+        await fetch("/api/bookings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(bookingData)
+        });
+      } catch (err) {
+        console.warn("Backend submit booking failed: ", err);
+      }
+
+      // 2. Hydrate/update Firebase Firestore database
       await setDoc(doc(db, "bookings", reservationId), bookingData);
 
-      // Save to local storage for persistence & instant viewer display
+      // Save to local storage for local offline redundancy
       const localStr = localStorage.getItem("ajeeb_bookings") || "[]";
       let localList = [];
       try {
@@ -590,7 +570,6 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       localList.push(bookingData);
       localStorage.setItem("ajeeb_bookings", JSON.stringify(localList));
 
-      // Guest: update local context array immediately since live listener isn't subscribed to "guest" uid
       if (!currentUser) {
         setBookings(prev => [...prev, bookingData]);
       }
@@ -604,6 +583,14 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const cancelReservation = async (id: string) => {
     const path = `bookings/${id}`;
     try {
+      // 1. Delete from Full-Stack Backend API
+      try {
+        await fetch(`/api/bookings/${id}`, { method: "DELETE" });
+      } catch (err) {
+        console.warn("Backend cancel booking failed: ", err);
+      }
+
+      // 2. Hydrate/delete from Firebase Firestore database
       await deleteDoc(doc(db, "bookings", id));
 
       // Remove from browser storage cache
@@ -618,7 +605,6 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       localList = localList.filter((b: any) => b.id !== id);
       localStorage.setItem("ajeeb_bookings", JSON.stringify(localList));
 
-      // Guest: update state from memory immediately
       if (!currentUser) {
         setBookings(prev => prev.filter(b => b.id !== id));
       }
@@ -641,21 +627,22 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
     const path = `leads/${leadId}`;
     try {
+      // 1. Send to Full-Stack Backend API
+      try {
+        await fetch("/api/leads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(contactData)
+        });
+      } catch (err) {
+        console.warn("Backend submit lead failed: ", err);
+      }
+
+      // 2. Hydrate/update Firebase Firestore database
       await setDoc(doc(db, "leads", leadId), contactData);
       return true;
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, path);
-    }
-    return false;
-  };
-
-  const deleteLead = async (id: string) => {
-    const path = `leads/${id}`;
-    try {
-      await deleteDoc(doc(db, "leads", id));
-      return true;
-    } catch (e) {
-      handleFirestoreError(e, OperationType.DELETE, path);
     }
     return false;
   };
@@ -668,7 +655,6 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         shows,
         gallery,
         bookings,
-        leads,
         comments,
         loading,
         refreshAll,
@@ -678,19 +664,11 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         signInWithEmail,
         signInWithGoogle,
         signOutUser,
-        updateShowDetails,
-        updatePerformerBio,
-        saveShow,
-        deleteShow,
-        saveGalleryItem,
-        deleteGalleryItem,
         likeGalleryItem,
         addComment,
-        deleteComment,
         submitReservation,
         cancelReservation,
-        submitLead,
-        deleteLead
+        submitLead
       }}
     >
       {children}

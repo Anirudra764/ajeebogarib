@@ -16,13 +16,6 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isAdmin() {
-      return isSignedIn() && (
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-        (request.auth.token.email == "anirudrapaul764@gmail.com" && request.auth.token.email_verified == true)
-      );
-    }
-
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
@@ -68,7 +61,7 @@ service cloud.firestore {
     function isValidGalleryItem(data) {
       return data.id is string &&
              data.type is string && (data.type == "photo" || data.type == "video") &&
-             data.url is string && data.url.size() <= 1000 &&
+             data.url is string && data.url.size() <= 600000 &&
              data.title is string && data.title.size() <= 250 &&
              data.category is string && (data.category == "live" || data.category == "bts" || data.category == "promo" || data.category == "quote") &&
              data.likes is int && data.likes >= 0 &&
@@ -98,44 +91,34 @@ service cloud.firestore {
 
     // Users collection rules
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
+      allow read: if isOwner(userId);
       allow create: if isOwner(userId) && isValidUser(incoming());
       allow update: if isOwner(userId) && isValidUser(incoming()) && incoming().uid == existing().uid;
-      allow delete: if isAdmin();
-    }
-
-    // Admin lookup helper collection
-    match /admins/{adminId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && (request.auth.token.email == "anirudrapaul764@gmail.com" || isAdmin());
+      allow delete: if false;
     }
 
     // Bookings collection rules
     match /bookings/{bookingId} {
-      allow get: if (existing().uid == "guest") || (isSignedIn() && (existing().uid == request.auth.uid || isAdmin()));
-      allow list: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow get: if (existing().uid == "guest") || (isSignedIn() && existing().uid == request.auth.uid);
+      allow list: if isSignedIn() && resource.data.uid == request.auth.uid;
       allow create: if (
         (incoming().uid == "guest" && isValidBooking(incoming())) ||
         (isSignedIn() && incoming().uid == request.auth.uid && isValidBooking(incoming()))
       );
-      allow update, delete: if isAdmin() || (isSignedIn() && (existing().uid == request.auth.uid || isAdmin()));
+      allow update, delete: if (isSignedIn() && existing().uid == request.auth.uid) || (existing().uid == "guest");
     }
 
     // Shows/Events collection rules
     match /shows/{showId} {
       allow read: if true;
-      allow create, delete: if isAdmin();
-      allow update: if (isAdmin() && isValidShow(incoming())) || (
-        // Let user update tickets status if required, but with narrow validations if needed
-        isAdmin()
-      );
+      allow write: if isSignedIn() && isValidShow(incoming());
     }
 
     // Gallery item collection rules (supports likes increment)
     match /gallery/{itemId} {
       allow read: if true;
-      allow create, delete: if isAdmin();
-      allow update: if (isAdmin() && isValidGalleryItem(incoming())) || (
+      allow create, delete: if isSignedIn() && isValidGalleryItem(incoming());
+      allow update: if (isSignedIn() && isValidGalleryItem(incoming())) || (
         // Allow public to increment likes only
         incoming().diff(existing()).affectedKeys().hasOnly(['likes']) &&
         incoming().likes == existing().likes + 1
@@ -146,21 +129,21 @@ service cloud.firestore {
     match /gallery_comments/{commentId} {
       allow read: if true;
       allow create: if isValidComment(incoming());
-      allow delete: if isAdmin();
+      allow delete: if isSignedIn();
     }
 
     // Contact form leads collection
     match /leads/{leadId} {
       allow create: if isValidLead(incoming());
-      allow read: if isAdmin();
-      allow delete: if isAdmin();
+      allow read: if isSignedIn();
+      allow delete: if isSignedIn();
       allow update: if false;
     }
 
     // Generic home page settings overrides
     match /settings/{settingId} {
       allow read: if true;
-      allow write: if isAdmin() && isValidSetting(incoming());
+      allow write: if isSignedIn() && isValidSetting(incoming());
     }
   }
 }
