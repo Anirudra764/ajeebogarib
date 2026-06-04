@@ -71,14 +71,32 @@ export default function Hero({ scrollToSection }: HeroProps) {
       id="hero"
       className="relative min-h-screen flex items-center justify-center overflow-hidden pt-24 pb-20 bg-black"
     >
-      {/* Dynamic Background Atmosphere and Backlights */}
+      {/* Dynamic Background Atmosphere and Backlights with Cinematic Background Image */}
       <div className="absolute inset-0 z-0">
+        <motion.div 
+          initial={{ scale: 1.15, opacity: 0 }}
+          animate={{ scale: 1.02, opacity: 0.35 }}
+          transition={{ duration: 1.8, ease: [0.16, 1, 0.3, 1] }}
+          className="absolute inset-0"
+        >
+          <img 
+            src="/images/502621126_17855485995441412_6026046547883275418_n.webp" 
+            alt="Ajeeb-O-Gareeb Acoustic Stage Backdrop" 
+            className="w-full h-full object-cover select-none pointer-events-none"
+            referrerPolicy="no-referrer"
+          />
+        </motion.div>
+
+        {/* Sophisticated Darkening Gradients for Pristine Text Legibility */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/45 to-black/85" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-transparent to-black/80" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(15,9,6,0.3),rgba(0,0,0,0.96))]" />
+
         <div className="absolute top-1/10 left-1/12 w-[220px] sm:w-[450px] h-[220px] sm:h-[450px] rounded-full bg-[#bc4123]/15 blur-[80px] sm:blur-[140px]" />
         <div className="absolute bottom-1/12 right-1/10 w-[250px] sm:w-[500px] h-[250px] sm:h-[500px] rounded-full bg-yellow-600/10 blur-[100px] sm:blur-[180px]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(20,12,8,0.75),rgba(0,0,0,1))]" />
         
         {/* Subtle grid mesh overlay */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.008)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.008)_1px,transparent_1px)] bg-[size:40px_40px] opacity-20" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.006)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.006)_1px,transparent_1px)] bg-[size:40px_40px] opacity-25" />
       </div>
 
       <div className="relative z-10 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8">
@@ -115,16 +133,41 @@ export default function Hero({ scrollToSection }: HeroProps) {
               </motion.div>
 
               <motion.h1
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.7 }}
-                className="font-serif text-4xl sm:text-7xl font-black text-white tracking-tight leading-none text-center"
+                className="font-serif text-4xl sm:text-7xl font-black text-white tracking-tight leading-none text-center flex flex-wrap justify-center gap-x-[0.25em] select-none"
                 id="hero-title"
               >
-                {showDetails.title}
-                <span className="block text-xs sm:text-sm font-mono mt-3 tracking-[0.3em] text-[#e6b17a]/90 uppercase font-black">
+                {showDetails.title.split(" ").map((word, wordIdx) => (
+                  <span
+                    key={wordIdx}
+                    className="inline-block overflow-hidden py-1"
+                  >
+                    <motion.span
+                      className="inline-block origin-bottom hover:text-[#e6b17a] transition-all duration-300 cursor-default"
+                      initial={{ y: "100%", opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{
+                        delay: 0.15 + wordIdx * 0.12,
+                        duration: 0.85,
+                        ease: [0.16, 1, 0.3, 1]
+                      }}
+                      whileHover={{
+                        scale: 1.05,
+                        y: -3,
+                        textShadow: "0 0 20px rgba(230, 177, 122, 0.75)"
+                      }}
+                    >
+                      {word}
+                    </motion.span>
+                  </span>
+                ))}
+                <motion.span
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.6, duration: 0.8 }}
+                  className="block w-full text-xs sm:text-sm font-mono mt-5 tracking-[0.3em] text-[#e6b17a]/90 uppercase font-black"
+                >
                   Performed by Annesha Partha and team
-                </span>
+                </motion.span>
               </motion.h1>
             </div>
 
@@ -140,12 +183,53 @@ export default function Hero({ scrollToSection }: HeroProps) {
 
             {/* Long synopsis description */}
             <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4, duration: 0.8 }}
-              className="text-sm sm:text-base text-[#d1bfae] leading-relaxed font-light max-w-2xl text-center mx-auto"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                delay: 0.45,
+                duration: 1.0,
+                ease: [0.16, 1, 0.3, 1]
+              }}
+              className="text-sm sm:text-base text-[#d1bfae] leading-relaxed font-light max-w-2xl text-center mx-auto relative px-6 py-4 bg-[#0d0705]/40 border-y border-[#3d2312]/20 backdrop-blur-[2px] rounded-xl shadow-inner"
             >
-              {showDetails.subtitle} {showDetails.shortDesc || "An unplugged fusion built specifically for Jamshedpur spaces like Cafe Regal of 1935, blending retro acoustic chords with deeply honest personal memories."}
+              <span className="block mb-2 font-serif text-[#e4ab74] text-base sm:text-lg font-medium tracking-wide">
+                {showDetails.subtitle.split(" ").map((word, i) => (
+                  <motion.span
+                    key={i}
+                    className="inline-block"
+                    initial={{ opacity: 0, filter: "blur(4px)", y: 5 }}
+                    animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+                    transition={{
+                      delay: 0.5 + i * 0.04,
+                      duration: 0.6,
+                      ease: "easeOut"
+                    }}
+                  >
+                    {word}&nbsp;
+                  </motion.span>
+                ))}
+              </span>
+              <span className="block text-xs sm:text-sm text-[#c0ae9d] font-sans font-light tracking-wide mt-3 leading-relaxed">
+                {(showDetails.shortDesc || "An unplugged fusion built specifically for Jamshedpur spaces like Cafe Regal of 1935, blending retro acoustic chords with deeply honest personal memories.").split(". ").map((sentence, sIdx) => {
+                  const cleanSentence = sentence.trim();
+                  if (!cleanSentence) return null;
+                  return (
+                    <motion.span
+                      key={sIdx}
+                      className="inline-block mr-1"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{
+                        delay: 0.95 + sIdx * 0.25,
+                        duration: 0.8,
+                        ease: [0.16, 1, 0.3, 1]
+                      }}
+                    >
+                      {cleanSentence}{sIdx < (showDetails.shortDesc || "").split(". ").length - 1 ? "." : ""}&nbsp;
+                    </motion.span>
+                  );
+                })}
+              </span>
             </motion.p>
 
             {/* Action buttons matching the aesthetic */}
