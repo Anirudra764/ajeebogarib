@@ -31,16 +31,114 @@
         "uid": { "type": "string" }
       },
       "required": ["id", "showId", "showTitle", "name", "email", "phone", "ticketsCount", "status"]
+    },
+    "PerformanceShow": {
+      "title": "PerformanceShow",
+      "description": "Dynamic theater and storytelling shows",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "description": { "type": "string" },
+        "duration": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "venue": { "type": "string" },
+        "location": { "type": "string" },
+        "price": { "type": "string" },
+        "status": { "type": "string", "enum": ["upcoming", "soldout", "completed"] },
+        "bookingUrl": { "type": "string" },
+        "isFeatured": { "type": "boolean" }
+      },
+      "required": ["id", "title", "venue", "date", "time", "price", "status"]
+    },
+    "GalleryItem": {
+      "title": "GalleryItem",
+      "description": "Media stream postings detailing active concerts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["photo", "video"] },
+        "url": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string", "enum": ["live", "bts", "promo", "quote"] },
+        "likes": { "type": "integer" },
+        "comments": { "type": "integer" },
+        "caption": { "type": "string" }
+      },
+      "required": ["id", "type", "url", "title", "category", "likes", "comments"]
+    },
+    "GalleryComment": {
+      "title": "GalleryComment",
+      "description": "User feedback comments left on media posts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "photoId": { "type": "string" },
+        "user": { "type": "string" },
+        "text": { "type": "string" },
+        "date": { "type": "string" }
+      },
+      "required": ["id", "photoId", "user", "text", "date"]
+    },
+    "ContactLead": {
+      "title": "ContactLead",
+      "description": "A booking lead query submitted in the outreach drawer",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" },
+        "sentAt": { "type": "string" }
+      },
+      "required": ["id", "name", "email", "subject", "message", "sentAt"]
+    },
+    "ShowSetting": {
+      "title": "ShowSetting",
+      "description": "Customizable homepage settings details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "data": { "type": "object" }
+      },
+      "required": ["id", "data"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
-      "description": "User account representations keyed by their Firebase Auth UID"
+      "description": "User account profiles"
+    },
+    "/admins/{adminId}": {
+      "schema": "User",
+      "description": "Administrative account pointers enabling write access"
     },
     "/bookings/{bookingId}": {
       "schema": "Booking",
-      "description": "Individual ticket reservation records"
+      "description": "Event registration ticket copies"
+    },
+    "/shows/{showId}": {
+      "schema": "PerformanceShow",
+      "description": "Live musical events postings"
+    },
+    "/gallery/{itemId}": {
+      "schema": "GalleryItem",
+      "description": "Photos and videos on showcase reels"
+    },
+    "/gallery_comments/{commentId}": {
+      "schema": "GalleryComment",
+      "description": "Client-registered reaction replies"
+    },
+    "/leads/{leadId}": {
+      "schema": "ContactLead",
+      "description": "Client-submitted contact pitches"
+    },
+    "/settings/{settingId}": {
+      "schema": "ShowSetting",
+      "description": "General homepage and biography settings dynamic content overrides"
     }
   }
 }

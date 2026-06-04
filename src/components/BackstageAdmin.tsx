@@ -1,309 +1,329 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
-  ShieldCheck, Lock, Unlock, Users, Calendar, MessageSquare, 
-  Mail, X, Plus, Trash2, Check, Sparkles, Filter, 
-  MapPin, Clock, Ticket, Star, FileText, RefreshCw 
+  ShieldCheck, 
+  Calendar, 
+  Ticket, 
+  Mail, 
+  Star, 
+  Trash2, 
+  Check, 
+  X, 
+  Plus, 
+  Lock, 
+  MessageSquare,
+  Settings,
+  User,
+  Image as ImageIcon
 } from "lucide-react";
-import { PerformanceShow, TicketReservation, ContactMessage } from "../types";
-import { UPCOMING_EVENTS, GALLERY_ITEMS } from "../data";
-
-interface AdminStats {
-  ticketsSold: number;
-  activeEvents: number;
-  totalNotes: number;
-  contactLeads: number;
-}
+import { useAjeebData } from "../context/AjeebDataContext";
+import { PerformanceShow, GalleryItem, TicketReservation } from "../types";
 
 export default function BackstageAdmin() {
   const [isOpen, setIsOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [passcode, setPasscode] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
-  const [activeTab, setActiveTab] = useState<"shows" | "reservations" | "notes" | "gallery" | "leads">("shows");
+  const [activeTab, setActiveTab] = useState<"shows" | "reservations" | "gallery" | "leads" | "settings">("shows");
 
-  // Dynamic States
-  const [shows, setShows] = useState<PerformanceShow[]>([]);
-  const [bookings, setBookings] = useState<TicketReservation[]>([]);
-  const [notes, setNotes] = useState<any[]>([]);
-  const [galleryComments, setGalleryComments] = useState<Record<string, any[]>>({});
-  const [leads, setLeads] = useState<ContactMessage[]>([]);
+  // Admin credentials auth form states
+  const [emailInput, setEmailInput] = useState("anirudrapaul31@gmail.com");
+  const [passwordInput, setPasswordInput] = useState("987654");
+  const [authError, setAuthError] = useState("");
+  const [isSignLoading, setIsSignLoading] = useState(false);
 
-  // Show Editor Form States
+  // Retrieve states from centralized Ajeeb Context syncing directly with live Firestore
+  const {
+    shows,
+    gallery,
+    bookings,
+    leads,
+    comments,
+    showDetails,
+    performerBio,
+    currentUser,
+    signInWithEmail,
+    signOutUser,
+    updateShowDetails,
+    updatePerformerBio,
+    saveShow,
+    deleteShow,
+    saveGalleryItem,
+    deleteGalleryItem,
+    deleteComment,
+    cancelReservation,
+    deleteLead
+  } = useAjeebData();
+
+  // Determine administrative state
+  const isAuthorizedAdmin = currentUser && currentUser.email === "anirudrapaul31@gmail.com";
+
+  // Form input states for creating a new show
   const [showTitle, setShowTitle] = useState("");
   const [showSubtitle, setShowSubtitle] = useState("");
-  const [showDesc, setShowDesc] = useState("");
   const [showVenue, setShowVenue] = useState("");
-  const [showLocation, setShowLocation] = useState("");
+  const [showLocation, setShowLocation] = useState("Jamshedpur, JH");
   const [showDate, setShowDate] = useState("");
-  const [showTime, setShowTime] = useState("");
-  const [showDuration, setShowDuration] = useState("100 min");
+  const [showTime, setShowTime] = useState("7:00 PM ILT");
+  const [showDuration, setShowDuration] = useState("120 mins");
   const [showPrice, setShowPrice] = useState("₹299");
-  const [showStatus, setShowStatus] = useState<"upcoming" | "soldout" | "completed">("upcoming");
+  const [showDesc, setShowDesc] = useState("");
   const [showIsFeatured, setShowIsFeatured] = useState(false);
-  const [editorSuccess, setEditorSuccess] = useState(false);
+
+  // Editing state for show price
   const [editingPriceShowId, setEditingPriceShowId] = useState<string | null>(null);
   const [editingPriceValue, setEditingPriceValue] = useState("");
 
-  // Load all databases from localStorage
-  const loadDatabase = () => {
+  // Create local states for editing website details
+  const [editedShowTitle, setEditedShowTitle] = useState("");
+  const [editedBengaliTitle, setEditedBengaliTitle] = useState("");
+  const [editedHindiTitle, setEditedHindiTitle] = useState("");
+  const [editedTagline, setEditedTagline] = useState("");
+  const [editedTaglineSec, setEditedTaglineSec] = useState("");
+  const [editedAboutNarrative, setEditedAboutNarrative] = useState("");
+  const [editedAudioSpotify, setEditedAudioSpotify] = useState("");
+
+  const [editedPerfName, setEditedPerfName] = useState("");
+  const [editedPerfSubtitle, setEditedPerfSubtitle] = useState("");
+  const [editedPerfTitleText, setEditedPerfTitleText] = useState("");
+  const [editedPerfBioLong, setEditedPerfBioLong] = useState("");
+  const [editedStatListeners, setEditedStatListeners] = useState("");
+  const [editedStatShows, setEditedStatShows] = useState("");
+  const [editedStatCafes, setEditedStatCafes] = useState("");
+
+  // Gallery publishing helper forms
+  const [galTitle, setGalTitle] = useState("");
+  const [galUrl, setGalUrl] = useState("");
+  const [galType, setGalType] = useState<"photo" | "video">("photo");
+  const [galCategory, setGalCategory] = useState<"live" | "bts" | "promo" | "quote">("live");
+  const [galCaption, setGalCaption] = useState("");
+
+  // Feedback flags
+  const [editorSuccess, setEditorSuccess] = useState(false);
+  const [gallerySuccess, setGallerySuccess] = useState(false);
+  const [settingsSuccess, setSettingsSuccess] = useState(false);
+
+  // Authenticate admin manually via Firebase Auth
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError("");
+    setIsSignLoading(true);
+
     try {
-      // 1. Shows
-      const savedShows = localStorage.getItem("ajeeb_shows_store");
-      if (savedShows) {
-        setShows(JSON.parse(savedShows));
-      } else {
-        setShows(UPCOMING_EVENTS);
-        localStorage.setItem("ajeeb_shows_store", JSON.stringify(UPCOMING_EVENTS));
-      }
-
-      // 2. Bookings
-      const savedBookings = localStorage.getItem("ajeeb_bookings_store");
-      setBookings(savedBookings ? JSON.parse(savedBookings) : []);
-
-      // 3. Notes (Parchment Wall)
-      const savedNotes = localStorage.getItem("ajeeb_parchments");
-      if (savedNotes) {
-        setNotes(JSON.parse(savedNotes));
-      } else {
-        // Fallback or leave empty
-        setNotes([]);
-      }
-
-      // 4. Gallery Comments
-      const savedComments = localStorage.getItem("ajeeb_gallery_comments_store");
-      if (savedComments) {
-        setGalleryComments(JSON.parse(savedComments));
-      } else {
-        const initialComments = {
-          "gal-01": [
-            { user: "storylover_jamshedpur", text: "The vibe at Cafe Regal was absolutely unreal! Can't wait for the next show.", date: "2 mins ago" },
-            { user: "deepika_sen", text: "When Annesha started singin about her father, literal tears in the whole row.", date: "1 hour ago" }
-          ],
-          "gal-03": [
-            { user: "caferegal_regular", text: "We love hosting Annesha! She brings absolute soul into this room.", date: "Yesterday" }
-          ]
-        };
-        setGalleryComments(initialComments);
-        localStorage.setItem("ajeeb_gallery_comments_store", JSON.stringify(initialComments));
-      }
-
-      // 5. Contact Inquiries / Leads
-      const savedLeads = localStorage.getItem("ajeeb_contact_inquiries");
-      setLeads(savedLeads ? JSON.parse(savedLeads) : []);
-
-    } catch (e) {
-      console.error("Local records loader fault:", e);
+      await signInWithEmail(emailInput.trim(), passwordInput.trim());
+      // Successful auth automatically binds user listener
+    } catch (err: any) {
+      console.error("[Backstage Admin Auth error]:", err);
+      setAuthError(err.message || "Failed to authenticate dashboard passcode.");
+    } finally {
+      setIsSignLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadDatabase();
+  // Pre-populate settings form input values when opening tab
+  const handleOpenSettingsTab = () => {
+    setEditedShowTitle(showDetails.title || "");
+    setEditedBengaliTitle(showDetails.bengaliTitle || "");
+    setEditedHindiTitle(showDetails.hindiTitle || "");
+    setEditedTagline(showDetails.taglineMain || "");
+    setEditedTaglineSec(showDetails.taglineSecondary || "");
+    setEditedAboutNarrative(showDetails.aboutNarrative || "");
+    setEditedAudioSpotify(showDetails.audioSpotifyLink || "");
 
-    const handleGlobalUpdate = () => {
-      loadDatabase();
-    };
+    setEditedPerfName(performerBio.name || "");
+    setEditedPerfSubtitle(performerBio.subtitle || "");
+    setEditedPerfTitleText(performerBio.bioTitle || "");
+    setEditedPerfBioLong(performerBio.biographyDetailed || "");
 
-    window.addEventListener("ajeeb-state-updated", handleGlobalUpdate);
-    return () => window.removeEventListener("ajeeb-state-updated", handleGlobalUpdate);
-  }, []);
-
-  // Recalculate metrics
-  const getStats = (): AdminStats => {
-    const active = shows.filter(s => s.status === "upcoming").length;
-    const sold = bookings.reduce((acc, curr) => acc + curr.ticketsCount, 0);
-    return {
-      ticketsSold: sold,
-      activeEvents: active,
-      totalNotes: notes.length,
-      contactLeads: leads.length
-    };
-  };
-
-  const handleAuthenticationSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanPass = passcode.trim().toLowerCase();
+    setEditedStatListeners(performerBio.metrics?.monthlyListeners || "5K+");
+    setEditedStatShows(performerBio.metrics?.completedSessions || "24+");
+    setEditedStatCafes(performerBio.metrics?.partneredOutlets || "12+");
     
-    if (cleanPass === "1997" || cleanPass === "admin" || cleanPass === "annesha") {
-      setIsAuthenticated(true);
-      setErrorMessage("");
-      setPasscode("");
-    } else {
-      setErrorMessage("Access Denied. Passphrase incorrect. Hint: try '1997' or 'admin'");
+    setActiveTab("settings");
+  };
+
+  // Submit show details modifications
+  const handleUpdateSettingsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSettingsSuccess(false);
+
+    try {
+      const updatedDetails = {
+        ...showDetails,
+        title: editedShowTitle,
+        bengaliTitle: editedBengaliTitle,
+        hindiTitle: editedHindiTitle,
+        taglineMain: editedTagline,
+        taglineSecondary: editedTaglineSec,
+        aboutNarrative: editedAboutNarrative,
+        audioSpotifyLink: editedAudioSpotify
+      };
+
+      const updatedBio = {
+        ...performerBio,
+        name: editedPerfName,
+        subtitle: editedPerfSubtitle,
+        bioTitle: editedPerfTitleText,
+        biographyDetailed: editedPerfBioLong,
+        metrics: {
+          monthlyListeners: editedStatListeners,
+          completedSessions: editedStatShows,
+          partneredOutlets: editedStatCafes
+        }
+      };
+
+      await updateShowDetails(updatedDetails);
+      await updatePerformerBio(updatedBio);
+
+      setSettingsSuccess(true);
+      setTimeout(() => setSettingsSuccess(false), 3000);
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  // Create Show
-  const handleCreateShowSubmit = (e: React.FormEvent) => {
+  // Handle publishing a new show Event
+  const handleCreateShowSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!showTitle.trim() || !showVenue.trim() || !showDate.trim() || !showTime.trim()) {
-      alert("Please enter title, venue, date and time.");
-      return;
-    }
+    setEditorSuccess(false);
 
     const newShow: PerformanceShow = {
       id: `show-${Date.now()}`,
-      title: showTitle.trim(),
-      subtitle: showSubtitle.trim() || "An Acoustic Musical Story Circle",
-      description: showDesc.trim() || "An intimate acoustic musical storytelling tour spotlighting raw memories and vulnerability.",
+      title: showTitle,
+      subtitle: showSubtitle,
+      description: showDesc,
       duration: showDuration,
       date: showDate,
       time: showTime,
-      venue: showVenue.trim(),
-      location: showLocation.trim() || "Jamshedpur, JH",
-      price: showPrice.trim().startsWith("₹") ? showPrice.trim() : `₹${showPrice.trim()}`,
-      status: showStatus,
+      venue: showVenue,
+      location: showLocation,
+      price: showPrice,
+      status: "upcoming",
       isFeatured: showIsFeatured
     };
 
-    const updatedShows = [...shows, newShow];
-    setShows(updatedShows);
-    localStorage.setItem("ajeeb_shows_store", JSON.stringify(updatedShows));
-    
-    // Reset Form
-    setShowTitle("");
-    setShowSubtitle("");
-    setShowDesc("");
-    setShowVenue("");
-    setShowLocation("");
-    setShowDate("");
-    setShowTime("");
-    setShowDuration("100 min");
-    setShowPrice("₹299");
-    setShowStatus("upcoming");
-    setShowIsFeatured(false);
+    const ok = await saveShow(newShow);
+    if (ok) {
+      setEditorSuccess(true);
+      setTimeout(() => setEditorSuccess(false), 3000);
 
-    setEditorSuccess(true);
-    setTimeout(() => setEditorSuccess(false), 3000);
-
-    // Notify other components
-    window.dispatchEvent(new Event("ajeeb-state-updated"));
-  };
-
-  // Update Show Status
-  const handleToggleShowStatus = (id: string, nextStatus: "upcoming" | "soldout" | "completed") => {
-    const updated = shows.map(s => {
-      if (s.id === id) {
-        return { ...s, status: nextStatus };
-      }
-      return s;
-    });
-    setShows(updated);
-    localStorage.setItem("ajeeb_shows_store", JSON.stringify(updated));
-    window.dispatchEvent(new Event("ajeeb-state-updated"));
-  };
-
-  // Save Price
-  const handleSavePrice = (id: string, newPrice: string) => {
-    if (!newPrice.trim()) return;
-    const formattedPrice = newPrice.trim().startsWith("₹") ? newPrice.trim() : `₹${newPrice.trim()}`;
-    const updated = shows.map(s => {
-      if (s.id === id) {
-        return { ...s, price: formattedPrice };
-      }
-      return s;
-    });
-    setShows(updated);
-    localStorage.setItem("ajeeb_shows_store", JSON.stringify(updated));
-    window.dispatchEvent(new Event("ajeeb-state-updated"));
-    setEditingPriceShowId(null);
-  };
-
-  // Toggle Featured status
-  const handleToggleShowIsFeatured = (id: string) => {
-    const updated = shows.map(s => {
-      if (s.id === id) {
-        return { ...s, isFeatured: !s.isFeatured };
-      }
-      return s;
-    });
-    setShows(updated);
-    localStorage.setItem("ajeeb_shows_store", JSON.stringify(updated));
-    window.dispatchEvent(new Event("ajeeb-state-updated"));
-  };
-
-  // Delete Show
-  const handleDeleteShow = (id: string) => {
-    if (confirm("Are you sure you want to remove this show event from the box office list?")) {
-      const updated = shows.filter(s => s.id !== id);
-      setShows(updated);
-      localStorage.setItem("ajeeb_shows_store", JSON.stringify(updated));
-      window.dispatchEvent(new Event("ajeeb-state-updated"));
+      // Reset form variables
+      setShowTitle("");
+      setShowSubtitle("");
+      setShowVenue("");
+      setShowDesc("");
+      setShowIsFeatured(false);
     }
   };
 
-  // Cancel Booking
-  const handleDeleteBooking = (id: string) => {
-    if (confirm("Cancel and delete this ticket reservation?")) {
-      const updated = bookings.filter(b => b.id !== id);
-      setBookings(updated);
-      localStorage.setItem("ajeeb_bookings_store", JSON.stringify(updated));
-      window.dispatchEvent(new Event("ajeeb-state-updated"));
+  // Handle publishing new gallery items
+  const handlePublishGallerySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGallerySuccess(false);
+
+    const newItem: Partial<GalleryItem> = {
+      title: galTitle,
+      url: galUrl || "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&w=400&q=80",
+      type: galType,
+      category: galCategory,
+      caption: galCaption,
+      likes: 0,
+      comments: 0
+    };
+
+    const ok = await saveGalleryItem(newItem);
+    if (ok) {
+      setGallerySuccess(true);
+      setTimeout(() => setGallerySuccess(false), 3000);
+
+      // Reset
+      setGalTitle("");
+      setGalUrl("");
+      setGalCaption("");
     }
   };
 
-  // Delete Parchment Note
-  const handleDeleteNote = (id: string) => {
-    if (confirm("Delete this pinned parchment note? This cannot be undone.")) {
-      const updated = notes.filter(n => n.id !== id);
-      setNotes(updated);
-      localStorage.setItem("ajeeb_parchments", JSON.stringify(updated));
-      window.dispatchEvent(new Event("ajeeb-state-updated"));
+  // Delete dynamic show posting
+  const handleDeleteShow = async (id: string) => {
+    if (confirm("Delete this storytelling dynamic event permanently?")) {
+      await deleteShow(id);
     }
   };
 
-  // Delete Gallery Comment
-  const handleDeleteComment = (itemId: string, indexToDelete: number) => {
-    if (confirm("Delete this spectator comment?")) {
-      const copy = { ...galleryComments };
-      if (copy[itemId]) {
-        copy[itemId] = copy[itemId].filter((_, i) => i !== indexToDelete);
-        setGalleryComments(copy);
-        localStorage.setItem("ajeeb_gallery_comments_store", JSON.stringify(copy));
-        window.dispatchEvent(new Event("ajeeb-state-updated"));
+  // Delete dynamic gallery card
+  const handleDeleteGallery = async (id: string) => {
+    if (confirm("Delete this gallery storyreel item?")) {
+      await deleteGalleryItem(id);
+    }
+  };
+
+  // Toggle dynamic ticket state status
+  const handleToggleShowStatus = async (id: string, nextStatus: "upcoming" | "soldout" | "completed") => {
+    const show = shows.find(s => s.id === id);
+    if (show) {
+      await saveShow({
+        ...show,
+        status: nextStatus
+      });
+    }
+  };
+
+  // Toggle Spotlights Status
+  const handleToggleShowIsFeatured = async (id: string) => {
+    const show = shows.find(s => s.id === id);
+    if (show) {
+      await saveShow({
+        ...show,
+        isFeatured: !show.isFeatured
+      });
+    }
+  };
+
+  // Edit show price inline
+  const handleSavePrice = async (id: string, val: string) => {
+    const show = shows.find(s => s.id === id);
+    if (show) {
+      await saveShow({
+        ...show,
+        price: val
+      });
+      setEditingPriceShowId(null);
+    }
+  };
+
+  // Deletion proxies
+  const handleDeleteCommentRow = async (photoId: string, itemIdx: number) => {
+    if (confirm("Moderate and prune this spectator comment?")) {
+      const comms = comments[photoId];
+      if (comms && comms[itemIdx]) {
+        await deleteComment(photoId, comms[itemIdx].id);
       }
     }
   };
 
-  // Delete Contact Lead Inquiries
-  const handleDeleteLead = (id: string) => {
-    if (confirm("Delete this contact inquiry entry?")) {
-      const updated = leads.filter((l: any) => l.id !== id);
-      setLeads(updated);
-      localStorage.setItem("ajeeb_contact_inquiries", JSON.stringify(updated));
-      window.dispatchEvent(new Event("ajeeb-state-updated"));
+  const handleDeleteLeadRow = async (id: string) => {
+    if (confirm("Archive and remove this inbox business inquiry lead?")) {
+      await deleteLead(id);
     }
   };
 
-  // Clear all databases entirely to defaults!
-  const handleFullReset = () => {
-    if (confirm("WARNING: Doing this will wipe out ALL dynamic comments, notes, show changes, and bookings, and revert the workspace database to static factory defaults. Continue?")) {
-      localStorage.removeItem("ajeeb_shows_store");
-      localStorage.removeItem("ajeeb_bookings_store");
-      localStorage.removeItem("ajeeb_parchments");
-      localStorage.removeItem("ajeeb_gallery_comments_store");
-      localStorage.removeItem("ajeeb_contact_inquiries");
-      loadDatabase();
-      window.dispatchEvent(new Event("ajeeb-state-updated"));
-      alert("Ajeeb-o-Gareeb database successfully reset back to pristine states.");
+  const handleDeleteBookingRow = async (id: string) => {
+    if (confirm("Revoke this ticket seat reservation?")) {
+      await cancelReservation(id);
     }
   };
 
-  const statMeta = getStats();
+  // Simple statistics metadata counter
+  const ticketsSold = bookings.reduce((sum, b) => sum + (b.ticketsCount || 0), 0);
 
   return (
     <>
-      {/* Absolute Admin Button placed gracefully in the Footer or corner */}
+      {/* Footer trigger button overlay entry point */}
       <button
         onClick={() => {
           setIsOpen(true);
-          loadDatabase();
         }}
-        className="text-[11px] font-mono hover:text-[#bc4123] border border-[#2b1f17] hover:border-[#bc4123]/50 bg-black/40 px-3.5 py-1.5 rounded transition-all mt-4 cursor-pointer flex items-center gap-1 mx-auto text-[#a27b5c]"
+        className="text-[11px] font-mono hover:text-[#bc4123] border border-[#2b1f17] hover:border-[#bc4123]/50 bg-black/40 px-3.5 py-1.5 rounded-lg transition-all mt-4 cursor-pointer flex items-center justify-center gap-1.5 mx-auto text-[#a27b5c]"
         id="backstage-gate-btn"
       >
-        <Lock size={11} className="text-[#bc4123]" />
+        <Lock size={12} className="text-[#bc4123]" />
         <span>Artists Space Login & Backstage Access</span>
       </button>
 
@@ -317,7 +337,7 @@ export default function BackstageAdmin() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#0c0806] border border-[#302117] rounded-2xl overflow-hidden w-full max-w-6xl shadow-2xl my-8 min-h-[80vh] flex flex-col"
+              className="bg-[#0c0806] border border-[#302117] rounded-2xl overflow-hidden w-full max-w-6xl shadow-2xl my-8 min-h-[85vh] flex flex-col select-text"
               id="backstage-dashboard-body"
             >
               
@@ -330,33 +350,34 @@ export default function BackstageAdmin() {
                   <div>
                     <h3 className="font-serif text-base font-bold text-white flex items-center gap-2">
                       <span>Backstage Desk Control</span>
-                      <span className="text-[10px] font-mono tracking-widest bg-[#bc4123] text-white px-2 py-0.5 rounded font-black">
-                        OFFLINE-PERSISTENT
-                      </span>
+                      {isAuthorizedAdmin && (
+                        <span className="text-[10px] font-mono tracking-widest bg-[#bc4123] text-white px-2 py-0.5 rounded font-black uppercase">
+                          Authorized Admin
+                        </span>
+                      )}
                     </h3>
                     <p className="text-[10px] font-mono text-[#a27b5c]">
-                      ANNEHSA'S DIRECT PORTAL • JAMSHEDPUR STORYTELLER CO.
+                      ANNEHSA'S DIRECT PORTAL • CLOUD INTEGRATED SECURE TERMINAL
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {isAuthenticated && (
+                  {currentUser && (
                     <button
-                      onClick={handleFullReset}
-                      className="text-[10px] bg-red-950/30 text-red-400 hover:bg-red-900 border border-red-900/60 font-mono px-3 py-1.5 rounded transition-all cursor-pointer flex items-center gap-1.5"
-                      title="Clear database caches"
+                      onClick={async () => {
+                        await signOutUser();
+                      }}
+                      className="text-[10px] bg-red-950/20 text-red-400 hover:bg-red-900/40 border border-red-900/60 font-mono px-3.5 py-1.5 rounded-lg transition-all cursor-pointer"
                     >
-                      <RefreshCw size={11} />
-                      Wipe Database
+                      Sign Out
                     </button>
                   )}
                   <button
                     onClick={() => {
                       setIsOpen(false);
-                      setIsAuthenticated(false);
                     }}
-                    className="text-xs uppercase font-mono tracking-wider text-[#a27b5c] hover:text-[#bc4123] bg-black/50 border border-[#302117] px-3.5 py-1.5 rounded transition"
+                    className="text-xs uppercase font-mono tracking-wider text-[#a27b5c] hover:text-[#bc4123] bg-black/50 border border-[#302117] px-3.5 py-1.5 rounded-lg transition cursor-pointer"
                     id="backstage-gate-close"
                   >
                     Close Gate
@@ -364,51 +385,68 @@ export default function BackstageAdmin() {
                 </div>
               </div>
 
-              {/* AUTH PANEL (IF NOT LOGGED IN) */}
-              {!isAuthenticated ? (
+              {/* AUTH PANEL (IF NOT ADMIN LOGGED IN) */}
+              {!isAuthorizedAdmin ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-sm mx-auto space-y-6">
                   <div className="w-14 h-14 bg-[#1b120c] border border-[#52331f] rounded-full flex items-center justify-center text-[#e6b17a]">
-                    <Lock size={24} className="animate-bounce" />
+                    <Lock size={24} className="animate-bounce text-[#bc4123]" />
                   </div>
                   <div>
                     <h4 className="font-serif text-lg font-bold text-white">Backstage Verification Required</h4>
-                    <p className="text-xs text-[#d1bfae] mt-1 leading-relaxed">
-                      Please input your credentials to authorize scheduling changes, reservation analysis, and spectator comment deletion.
+                    <p className="text-xs text-[#d1bfae] mt-1.5 leading-relaxed">
+                      Verify your administrative credentials below to unlock schedule changes, comments moderation, and real-time website information overrides.
                     </p>
                   </div>
 
-                  <form onSubmit={handleAuthenticationSubmit} className="w-full space-y-3">
-                    <input
-                      type="password"
-                      required
-                      autoFocus
-                      placeholder="Enter security passcode..."
-                      value={passcode}
-                      onChange={(e) => {
-                        setPasscode(e.target.value);
-                        setErrorMessage("");
-                      }}
-                      className="w-full text-center text-xs bg-[#0b0705] border border-[#3e2b1d] focus:border-[#e6b17a] text-white px-4 py-3 rounded-lg focus:outline-none"
-                      id="backstage-passcode-input"
-                    />
+                  <form onSubmit={handleAuthSubmit} className="w-full space-y-3 text-left">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Admin Email</label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="Enter email..."
+                        value={emailInput}
+                        onChange={(e) => {
+                          setEmailInput(e.target.value);
+                          setAuthError("");
+                        }}
+                        className="w-full text-xs font-mono bg-[#0b0705] border border-[#3e2b1d] focus:border-[#e6b17a] text-white px-3 py-2.5 rounded-lg focus:outline-none"
+                      />
+                    </div>
                     
-                    {errorMessage && (
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Security Passcode / Password</label>
+                      <input
+                        type="password"
+                        required
+                        placeholder="Enter secret passcode..."
+                        value={passwordInput}
+                        onChange={(e) => {
+                          setPasswordInput(e.target.value);
+                          setAuthError("");
+                        }}
+                        className="w-full text-xs font-mono bg-[#0b0705] border border-[#3e2b1d] focus:border-[#e6b17a] text-white px-3 py-2.5 rounded-lg focus:outline-none"
+                      />
+                    </div>
+
+                    {authError && (
                       <p className="text-[11px] text-red-500 bg-red-950/20 border border-red-900/40 py-2 px-3 rounded-md italic">
-                        {errorMessage}
+                        {authError}
                       </p>
                     )}
 
                     <button
                       type="submit"
-                      className="w-full bg-[#bc4123] hover:bg-[#ce4c2a] text-white text-xs font-bold py-3 rounded-lg transition"
+                      disabled={isSignLoading}
+                      className="w-full bg-[#bc4123] hover:bg-[#ce4c2a] text-white text-xs font-bold py-3 rounded-lg transition cursor-pointer disabled:opacity-50"
                       id="backstage-verify-submit"
                     >
-                      Verify Passport Code
+                      {isSignLoading ? "Verifying Credentials..." : "Authenticate Admin Session"}
                     </button>
                   </form>
 
-                  <p className="text-[10px] text-[#a27b5c] italic tracking-wide">
-                    Default Passcode Hint: <span className="font-bold underline text-[#e6b17a]">1997</span> (Annesha's birth year) or <span className="font-bold">admin</span>
+                  <p className="text-[10px] text-[#a27b5c] italic tracking-normal border border-[#3a2212]/40 bg-[#160f0b]/40 rounded p-2.5">
+                    Admin access configured: <span className="font-bold text-[#e6b17a]">anirudrapaul31@gmail.com</span> with password <span className="font-bold text-[#e6b17a]">987654</span>. Enter credentials to log in!
                   </p>
                 </div>
               ) : (
@@ -416,39 +454,35 @@ export default function BackstageAdmin() {
                 <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
                   
                   {/* Left Column Tabs Selector */}
-                  <div className="w-full md:w-[220px] bg-[#0c0806] border-b md:border-b-0 md:border-r border-[#302117] p-4 flex flex-row md:flex-col gap-1.5 overflow-x-auto scroller-none md:overflow-x-visible">
+                  <div className="w-full md:w-[220px] bg-[#0c0806] border-b md:border-b-0 md:border-r border-[#302117] p-4 flex flex-row md:flex-col gap-1.5 overflow-x-auto scroller-none md:overflow-x-visible shrink-0">
                     
                     <div className="hidden md:block px-3 py-2 text-[10px] font-mono tracking-widest text-[#a27b5c]/80 uppercase font-black">
                       OPERATIONS ROOM
                     </div>
 
                     {[
-                      { id: "shows", label: "Concerts Manager", icon: Calendar, badge: shows.length },
-                      { id: "reservations", label: "Reservations Desk", icon: Ticket, badge: bookings.length },
-                      { id: "notes", label: "Pinboard Wall", icon: MessageSquare, badge: notes.length },
-                      { id: "gallery", label: "Gallery Reactions", icon: Star, badge: Object.values(galleryComments).flat().length },
-                      { id: "leads", label: "Contact Inbox", icon: Mail, badge: leads.length }
+                      { id: "shows", label: "Concerts Scheduler", icon: Calendar, badge: shows.length },
+                      { id: "reservations", label: "Bookings Desk", icon: Ticket, badge: bookings.length },
+                      { id: "leads", label: "Contact Inbox", icon: Mail, badge: leads.length },
+                      { id: "gallery", label: "Showreel Gallery", icon: Star, badge: `${gallery.length} posts` },
                     ].map((tab) => {
                       const Icon = tab.icon;
                       return (
                         <button
                           key={tab.id}
                           onClick={() => setActiveTab(tab.id as any)}
-                          className={`w-full text-left text-xs font-semibold px-3 py-2.5 rounded-lg flex items-center justify-between gap-2.5 transition whitespace-nowrap md:whitespace-normal cursor-pointer ${
+                          className={`w-full text-left text-xs font-semibold px-3 py-2.5 rounded-lg flex items-center justify-between gap-2.5 transition whitespace-nowrap cursor-pointer ${
                             activeTab === tab.id
                               ? "bg-[#bc4123] text-white shadow-md border border-[#9d341c]"
                               : "text-[#d1bfae] hover:bg-[#150f0c] hover:text-[#e6b17a]"
                           }`}
-                          id={`dash-tab-${tab.id}`}
                         >
                           <span className="flex items-center gap-2">
                             <Icon size={14} />
                             <span>{tab.label}</span>
                           </span>
                           <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${
-                            activeTab === tab.id
-                              ? "bg-black/30 text-white"
-                              : "bg-[#18110c] text-[#a27b5c]"
+                            activeTab === tab.id ? "bg-black/30 text-white" : "bg-[#18110c] text-[#a27b5c]"
                           }`}>
                             {tab.badge}
                           </span>
@@ -456,22 +490,39 @@ export default function BackstageAdmin() {
                       );
                     })}
 
+                    <button
+                      onClick={handleOpenSettingsTab}
+                      className={`w-full text-left text-xs font-semibold px-3 py-2.5 rounded-lg flex items-center justify-between gap-2.5 transition whitespace-nowrap cursor-pointer ${
+                        activeTab === "settings"
+                          ? "bg-[#bc4123] text-white shadow-md border border-[#9d341c]"
+                          : "text-[#d1bfae] hover:bg-[#150f0c] hover:text-[#e6b17a]"
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Settings size={14} />
+                        <span>Override Site Copy</span>
+                      </span>
+                      <span className="text-[10px] font-mono text-green-400 font-bold uppercase animate-pulse">
+                        Any
+                      </span>
+                    </button>
+
                     <div className="hidden md:block mt-auto bg-[#130d0a] border border-[#302117]/60 p-3.5 rounded-xl space-y-2.5">
                       <div className="flex justify-between items-center text-[10px] text-[#a27b5c] font-mono">
                         <span>METRIC STATUS</span>
-                        <span className="text-[#3eda76] font-bold">LIVE</span>
+                        <span className="text-[#3eda76] font-bold uppercase">Cloud Sync</span>
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-center">
                         <div className="bg-black/50 p-2 rounded border border-[#302117]/40">
-                          <span className="text-[10px] text-[#a27b5c]/85 block font-mono">TIX SOLD</span>
+                          <span className="text-[10px] text-[#a27b5c]/85 block font-mono">SEATS SOLD</span>
                           <span className="text-sm font-serif font-bold text-[#e6b17a]">
-                            {statMeta.ticketsSold}
+                            {ticketsSold}
                           </span>
                         </div>
                         <div className="bg-black/50 p-2 rounded border border-[#302117]/40">
                           <span className="text-[10px] text-[#a27b5c]/85 block font-mono">INBOX</span>
                           <span className="text-sm font-serif font-bold text-[#bc4123]">
-                            {statMeta.contactLeads}
+                            {leads.length}
                           </span>
                         </div>
                       </div>
@@ -480,26 +531,25 @@ export default function BackstageAdmin() {
                   </div>
 
                   {/* Right Dashboard Workspace Panel */}
-                  <div className="flex-1 p-6 md:p-8 overflow-y-auto max-h-[60vh] md:max-h-none select-text">
+                  <div className="flex-1 p-6 md:p-8 overflow-y-auto max-h-[65vh] md:max-h-none select-text">
                     
                     {/* ————————————————— 1. CONCERTS SCHEDULER ————————————————— */}
                     {activeTab === "shows" && (
                       <div className="space-y-8">
                         <div>
-                          <h4 className="font-serif text-lg font-bold text-white mb-1.5">Scheduled Musical Performances</h4>
+                          <h4 className="font-serif text-lg font-bold text-white mb-1.5">Scheduled Performance Concerts</h4>
                           <p className="text-xs text-[#d1bfae]">
-                            Add new shows to Cafe Regal, configure dates, or mark slots as 'soldout' in milliseconds! What you define here is instantly published to visitors.
+                            Publish new concert events, mark slots as "soldout", or edit pricing. What you perform here is instantly published to everyone in real-time.
                           </p>
                         </div>
 
-                        {/* Combined Grid: Form entry and active shows list */}
                         <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
                           
                           {/* Create Show form */}
-                          <form onSubmit={handleCreateShowSubmit} className="xl:col-span-5 bg-[#0e0a07] border border-[#302117] p-5 rounded-2xl space-y-4">
+                          <form onSubmit={handleCreateShowSubmit} className="xl:col-span-12 lg:xl:col-span-5 bg-[#0e0a07] border border-[#302117] p-5 rounded-2xl space-y-4">
                             <h5 className="font-serif text-sm font-bold text-[#e6b17a] border-b border-[#302117]/50 pb-2 mb-2 flex items-center gap-1.5">
                               <Plus size={15} />
-                              Publish New Performance Tour
+                              Add New Tour Performance
                             </h5>
 
                             <div className="space-y-1">
@@ -507,7 +557,7 @@ export default function BackstageAdmin() {
                               <input
                                 type="text"
                                 required
-                                placeholder="e.g. Ajeeb-o-Gareeb: In the Alleyways"
+                                placeholder="e.g. Ajeeb-o-Gareeb: Jamshedpur Unplugged"
                                 value={showTitle}
                                 onChange={(e) => setShowTitle(e.target.value)}
                                 className="w-full text-xs bg-[#070504] border border-[#302117] text-white px-3 py-2 rounded focus:outline-none"
@@ -515,7 +565,7 @@ export default function BackstageAdmin() {
                             </div>
 
                             <div className="space-y-1">
-                              <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Subtitle/Motto</label>
+                              <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Subtitle/Tagline</label>
                               <input
                                 type="text"
                                 placeholder="e.g. Unplugged Micro-Theater Night"
@@ -527,11 +577,11 @@ export default function BackstageAdmin() {
 
                             <div className="grid grid-cols-2 gap-3">
                               <div className="space-y-1">
-                                <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Venue</label>
+                                <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Venue Room</label>
                                 <input
                                   type="text"
                                   required
-                                  placeholder="e.g. Cafe Regal 35"
+                                  placeholder="e.g. Café Regal, Jamshedpur"
                                   value={showVenue}
                                   onChange={(e) => setShowVenue(e.target.value)}
                                   className="w-full text-xs bg-[#070504] border border-[#302117] text-white px-3 py-2 rounded focus:outline-none"
@@ -561,11 +611,11 @@ export default function BackstageAdmin() {
                                 />
                               </div>
                               <div className="space-y-1">
-                                <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Time Code</label>
+                                <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Time Slot</label>
                                 <input
                                   type="text"
                                   required
-                                  placeholder="e.g. 7:00 PM ILT"
+                                  placeholder="e.g. 7:00 PM IST"
                                   value={showTime}
                                   onChange={(e) => setShowTime(e.target.value)}
                                   className="w-full text-xs bg-[#070504] border border-[#302117] text-white px-3 py-2 rounded focus:outline-none"
@@ -584,7 +634,7 @@ export default function BackstageAdmin() {
                                 />
                               </div>
                               <div className="space-y-1">
-                                <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Donation Seat Price</label>
+                                <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Ticket Seat Price</label>
                                 <input
                                   type="text"
                                   placeholder="e.g. ₹299"
@@ -596,19 +646,19 @@ export default function BackstageAdmin() {
                             </div>
 
                             <div className="space-y-1">
-                              <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase block">Description Summary</label>
+                              <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase block">Event Description Brief</label>
                               <textarea
                                 rows={2}
                                 value={showDesc}
                                 onChange={(e) => setShowDesc(e.target.value)}
                                 className="w-full text-xs bg-[#070504] border border-[#302117] text-white p-2.5 rounded focus:outline-none resize-none"
-                                placeholder="Summary notes on what is performative..."
+                                placeholder="Details about this narrative show details..."
                               />
                             </div>
 
                             <div className="flex items-center justify-between py-1 bg-black/40 px-3 rounded border border-[#302117]/40">
                               <label className="text-xs text-[#d1bfae] cursor-pointer" htmlFor="back-featured-chk">
-                                ★ Spotlight Homecoming
+                                ★ Spotlight Event Card (Featured on Home)
                               </label>
                               <input
                                 type="checkbox"
@@ -621,7 +671,7 @@ export default function BackstageAdmin() {
 
                             <button
                               type="submit"
-                              className="w-full bg-[#bc4123] hover:bg-[#ce4c2a] text-white text-xs font-bold py-2.5 rounded transition"
+                              className="w-full bg-[#bc4123] hover:bg-[#ce4c2a] text-white text-xs font-bold py-2.5 rounded transition cursor-pointer"
                             >
                               Publish Live Event
                             </button>
@@ -629,22 +679,21 @@ export default function BackstageAdmin() {
                             {editorSuccess && (
                               <div className="bg-[#121c15] border border-[#235338] p-2 rounded text-xs text-[#a3f0c3] text-center flex items-center justify-center gap-1">
                                 <Check size={12} />
-                                <span>Event scheduled and saved in database!</span>
+                                <span>Event scheduled and saved in dynamic database!</span>
                               </div>
                             )}
-
                           </form>
 
                           {/* Active lists */}
-                          <div className="xl:col-span-7 space-y-4">
-                            <h5 className="font-serif text-sm font-bold text-[#d1bfae] border-b border-[#302117]/50 pb-2 mb-2 flex items-center gap-1.5">
-                              Active Concert Catalogs list ({shows.length})
+                          <div className="xl:col-span-12 space-y-4 pt-4">
+                            <h5 className="font-serif text-sm font-bold text-[#d1bfae] border-b border-[#302117]/50 pb-2 mb-2">
+                              Active Concert Catalogs ({shows.length})
                             </h5>
 
                             {shows.length === 0 ? (
-                              <p className="text-xs text-[#a27b5c] py-8 text-center italic">No events programmed into box office storage.</p>
+                              <p className="text-xs text-[#a27b5c] py-8 text-center italic">No dynamic events found in Database.</p>
                             ) : (
-                              <div className="space-y-3 max-h-[430px] overflow-y-auto pr-1">
+                              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
                                 {shows.map((item) => (
                                   <div key={item.id} className="bg-[#100a08] border border-[#302117] p-3.5 rounded-xl flex justify-between items-center gap-4 hover:border-[#422e22] transition-all">
                                     <div className="space-y-1 flex-1">
@@ -656,17 +705,16 @@ export default function BackstageAdmin() {
                                         </span>
                                         {item.isFeatured && (
                                           <span className="text-[9px] font-bold text-[#e6b17a] flex items-center gap-0.5 bg-[#20150d] px-1.5 py-0.5 rounded">
-                                            <Star size={8} className="fill-[#e6b17a]" /> FEATURED
+                                            <Star size={8} className="fill-[#e6b17a]" /> SPOTLIGHT
                                           </span>
                                         )}
                                       </div>
                                       <h6 className="font-serif text-sm font-bold text-white">{item.title}</h6>
                                       <p className="text-[10px] text-[#a27b5c] font-mono">
-                                        Date: {item.date} • {item.time} • {item.venue}
+                                        {item.date} • {item.time} • {item.venue}
                                       </p>
 
-                                      {/* Price display with inline editor */}
-                                      <div className="pt-1.5 flex items-center select-none">
+                                      <div className="pt-1.5 flex items-center">
                                         {editingPriceShowId === item.id ? (
                                           <div className="flex items-center gap-1.5 bg-[#080504] border border-[#bc4123]/50 px-2 py-1 rounded">
                                             <span className="text-[9px] text-[#a27b5c] font-mono uppercase">New Price:</span>
@@ -674,8 +722,7 @@ export default function BackstageAdmin() {
                                               type="text"
                                               value={editingPriceValue}
                                               onChange={(e) => setEditingPriceValue(e.target.value)}
-                                              className="bg-black text-white text-[10px] px-1.5 py-0.5 rounded w-16 text-center font-mono focus:outline-none focus:ring-1 focus:ring-[#bc4123]"
-                                              placeholder="e.g. 299"
+                                              className="bg-black text-white text-[10px] px-1.5 py-0.5 rounded w-16 text-center font-mono focus:outline-none"
                                               autoFocus
                                               onKeyDown={(e) => {
                                                 if (e.key === "Enter") handleSavePrice(item.id, editingPriceValue);
@@ -685,23 +732,21 @@ export default function BackstageAdmin() {
                                             <button
                                               type="button"
                                               onClick={() => handleSavePrice(item.id, editingPriceValue)}
-                                              className="text-[10px] text-green-400 hover:text-green-300 p-0.5 cursor-pointer"
-                                              title="Save"
+                                              className="text-[10px] text-green-400 p-0.5 cursor-pointer"
                                             >
-                                              <Check size={11} className="stroke-[3]" />
+                                              <Check size={11} />
                                             </button>
                                             <button
                                               type="button"
                                               onClick={() => setEditingPriceShowId(null)}
-                                              className="text-[10px] text-red-400 hover:text-red-300 p-0.5 cursor-pointer"
-                                              title="Cancel"
+                                              className="text-[10px] text-red-400 p-0.5 cursor-pointer"
                                             >
-                                              <X size={11} className="stroke-[3]" />
+                                              <X size={11} />
                                             </button>
                                           </div>
                                         ) : (
                                           <div className="flex items-center gap-1.5">
-                                            <span className="text-[10px] text-[#a27b5c] font-mono uppercase">Price:</span>
+                                            <span className="text-[10px] text-[#a27b5c] font-mono uppercase">Cost:</span>
                                             <span className="text-xs font-serif font-black text-[#e6b17a]">
                                               {item.price}
                                             </span>
@@ -726,24 +771,21 @@ export default function BackstageAdmin() {
                                         <button
                                           type="button"
                                           onClick={() => handleToggleShowStatus(item.id, "upcoming")}
-                                          className={`text-[9px] font-mono px-2 py-1 rounded transition ${item.status === "upcoming" ? "bg-green-950 text-green-300 font-bold border border-green-800" : "bg-black/40 text-stone-400 border border-transparent hover:bg-stone-800"}`}
-                                          title="Set status: upcoming"
+                                          className={`text-[9px] font-mono px-2 py-1 rounded transition cursor-pointer ${item.status === "upcoming" ? "bg-green-950 text-green-300 font-bold border border-green-800" : "bg-black/40 text-stone-400 border border-transparent hover:bg-stone-800"}`}
                                         >
                                           Live
                                         </button>
                                         <button
                                           type="button"
                                           onClick={() => handleToggleShowStatus(item.id, "soldout")}
-                                          className={`text-[9px] font-mono px-2 py-1 rounded transition ${item.status === "soldout" ? "bg-amber-950 text-amber-300 font-bold border border-amber-800" : "bg-black/40 text-stone-400 border border-transparent hover:bg-stone-800"}`}
-                                          title="Set status: soldout"
+                                          className={`text-[9px] font-mono px-2 py-1 rounded transition cursor-pointer ${item.status === "soldout" ? "bg-amber-950 text-amber-300 font-bold border border-amber-800" : "bg-black/40 text-stone-400 border border-transparent hover:bg-stone-800"}`}
                                         >
-                                          SoldOut
+                                          Sold
                                         </button>
                                         <button
                                           type="button"
                                           onClick={() => handleToggleShowStatus(item.id, "completed")}
-                                          className={`text-[9px] font-mono px-2 py-1 rounded transition ${item.status === "completed" ? "bg-stone-900 text-stone-300 font-bold border border-stone-700" : "bg-black/40 text-stone-400 border border-transparent hover:bg-stone-800"}`}
-                                          title="Set status: completed"
+                                          className={`text-[9px] font-mono px-2 py-1 rounded transition cursor-pointer ${item.status === "completed" ? "bg-stone-900 text-stone-300 font-bold border border-stone-700" : "bg-black/40 text-stone-400 border border-transparent hover:bg-stone-800"}`}
                                         >
                                           Done
                                         </button>
@@ -753,15 +795,15 @@ export default function BackstageAdmin() {
                                         <button 
                                           type="button"
                                           onClick={() => handleToggleShowIsFeatured(item.id)}
-                                          className="text-[10px] font-mono text-[#a27b5c] hover:text-[#e6b17a]"
+                                          className="text-[10px] font-mono text-[#a27b5c] hover:text-[#e6b17a] cursor-pointer"
                                         >
-                                          {item.isFeatured ? "★ Unstar" : "☆ Star"}
+                                          {item.isFeatured ? "★ Un spotlight" : "☆ Spotlight"}
                                         </button>
                                         <span className="text-[#302117]">|</span>
                                         <button
                                           type="button"
                                           onClick={() => handleDeleteShow(item.id)}
-                                          className="text-red-500 hover:text-red-400 p-1 bg-red-950/20 rounded hover:bg-red-900 transition"
+                                          className="text-red-500 hover:text-red-400 p-1 bg-red-950/20 rounded hover:bg-red-900 transition cursor-pointer"
                                         >
                                           <Trash2 size={12} />
                                         </button>
@@ -771,13 +813,11 @@ export default function BackstageAdmin() {
                                 ))}
                               </div>
                             )}
-
                           </div>
 
                         </div>
                       </div>
                     )}
-
 
                     {/* ————————————————— 2. BOOKINGS RESERVATIONS LIST ————————————————— */}
                     {activeTab === "reservations" && (
@@ -785,13 +825,13 @@ export default function BackstageAdmin() {
                         <div>
                           <h4 className="font-serif text-lg font-bold text-white mb-1.5">Ticket Sales & Registrations</h4>
                           <p className="text-xs text-[#d1bfae]">
-                            Monitor guests who booked digital simulated seat ticket passes for Jamshedpur showcases. Use list notes to contact guests on WhatsApp!
+                            Audience members who booked and signed reservation passes on your website. Use contacts to trace admissions.
                           </p>
                         </div>
 
                         {bookings.length === 0 ? (
                           <div className="border border-dashed border-[#3e2c1f] p-12 text-center rounded-xl text-xs text-[#d1bfae]/60">
-                            No active tickets sold yet. The booking vault database is clear.
+                            No reservations yet. The tickets database is clear.
                           </div>
                         ) : (
                           <div className="overflow-x-auto border border-[#302117] rounded-xl bg-black/40">
@@ -800,10 +840,10 @@ export default function BackstageAdmin() {
                                 <tr className="bg-[#150f0c] text-[#a27b5c] border-b border-[#302117] font-mono tracking-wider uppercase text-[9px]">
                                   <th className="p-3.5 pl-4">Pass ID</th>
                                   <th className="p-3.5">Guest & Contacts</th>
-                                  <th className="p-3.5">Show Title</th>
-                                  <th className="p-3.5">Seats</th>
-                                  <th className="p-3.5">Booked date</th>
-                                  <th className="p-3.5 text-right pr-4">Cancel</th>
+                                  <th className="p-3.5">Show Event</th>
+                                  <th className="p-3.5">Seats Count</th>
+                                  <th className="p-3.5">Approved At</th>
+                                  <th className="p-3.5 text-right pr-4">Revoke</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-[#261c15]">
@@ -829,11 +869,10 @@ export default function BackstageAdmin() {
                                     </td>
                                     <td className="p-3.5 text-right pr-4">
                                       <button
-                                        onClick={() => handleDeleteBooking(booking.id)}
-                                        className="p-1 px-2 border border-[#8c2a1c]/40 text-red-400 hover:bg-red-950/40 hover:text-white transition rounded text-[10px] font-mono"
-                                        title="Revoke pass"
+                                        onClick={() => handleDeleteBookingRow(booking.id)}
+                                        className="p-1 px-2 border border-[#8c2a1c]/40 text-red-400 hover:bg-red-950/40 hover:text-white transition rounded text-[10px] font-mono cursor-pointer"
                                       >
-                                        Revoke
+                                        Delete
                                       </button>
                                     </td>
                                   </tr>
@@ -845,130 +884,201 @@ export default function BackstageAdmin() {
                       </div>
                     )}
 
-
-                    {/* ————————————————— 3. PARCHMENT WALL MODERATION ————————————————— */}
-                    {activeTab === "notes" && (
-                      <div className="space-y-6">
-                        <div>
-                          <h4 className="font-serif text-lg font-bold text-white mb-1.5">Spectator Memory Board Moderator</h4>
-                          <p className="text-xs text-[#d1bfae]">
-                            Monitor notes left on the Parchment Story Wall by Café Regal audiences or university students. Instantly wipe out spam or inappropriate postings.
-                          </p>
-                        </div>
-
-                        {notes.length === 0 ? (
-                          <div className="border border-dashed border-[#3e2c1f] p-12 text-center rounded-xl text-xs text-[#d1bfae]/60">
-                            The parchment board is current clean. No notes found.
-                          </div>
-                        ) : (
-                          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                            {notes.map((note) => (
-                              <div key={note.id} className="bg-[#120d0a] border border-[#2b1f16] p-4 rounded-xl relative hover:border-[#422e22] transition flex flex-col justify-between">
-                                <button
-                                  onClick={() => handleDeleteNote(note.id)}
-                                  className="absolute top-2.5 right-2.5 p-1 bg-red-950/30 text-red-400 border border-red-900/40 rounded hover:bg-red-900 transition cursor-pointer"
-                                  title="Delete Note"
-                                >
-                                  <Trash2 size={11} />
-                                </button>
-                                
-                                <div className="space-y-2">
-                                  <div className="text-[10px] font-mono text-[#a27b5c] flex justify-between pr-6 border-b border-[#302117]/50 pb-1.5">
-                                    <span>{note.relation}</span>
-                                    <span>{note.date || "June 2026"}</span>
-                                  </div>
-                                  <p className="text-xs italic text-stone-200 leading-relaxed font-serif select-text">
-                                    "{note.text}"
-                                  </p>
-                                </div>
-
-                                <div className="mt-4 pt-2 border-t border-[#302117]/30 flex justify-between items-center text-[10px] font-mono text-[#e6b17a]">
-                                  <span>Author: {note.author}</span>
-                                  <span className="text-[#bc4123] font-bold">ID: {note.id.split("-")[1] || "Static"}</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-
-                    {/* ————————————————— 4. GALLERY COMMENTS MODERATION ————————————————— */}
+                    {/* ————————————————— 3. GALLERY SHOWREEL MANAGER ————————————————— */}
                     {activeTab === "gallery" && (
                       <div className="space-y-6">
                         <div>
-                          <h4 className="font-serif text-lg font-bold text-white mb-1.5">Gallery Storyreel Reactions</h4>
+                          <h4 className="font-serif text-lg font-bold text-white mb-1.5">Gallery Storyreels & Comments Moderator</h4>
                           <p className="text-xs text-[#d1bfae]">
-                            Monitor comments submitted on visual items or behind-the-scenes slides. High fidelity filtering keeps content safe.
+                            Prune and publish visual items, live moments, backstage secrets, and quotes. You can also view or moderate active guest comments on each reel instantly!
                           </p>
                         </div>
 
-                        {Object.values(galleryComments).flat().length === 0 ? (
-                          <p className="text-xs text-[#a27b5c] py-8 text-center italic">No reactions written yet on any showcase reel.</p>
-                        ) : (
-                          <div className="space-y-6">
-                            {Object.entries(galleryComments).map(([itemId, list]) => {
-                              const listTyped = list as any[];
-                              if (!listTyped || listTyped.length === 0) return null;
-                              return (
-                                <div key={itemId} className="bg-[#100a08] border border-[#2c1e15] p-5 rounded-xl space-y-4">
-                                  <h5 className="font-mono text-xs text-[#e6b17a] font-bold tracking-wider uppercase border-b border-[#302117]/50 pb-2">
-                                    COMMENTS ON REEL ID: <span className="text-white bg-[#bc4123] px-2 py-0.5 rounded font-bold">{itemId}</span>
-                                  </h5>
-                                  
-                                  <div className="space-y-3">
-                                    {listTyped.map((c: any, idx: number) => (
-                                      <div key={idx} className="bg-black/50 border border-[#241710] p-3 rounded-lg flex justify-between items-start gap-4">
-                                        <div className="space-y-0.5">
-                                          <p className="text-xs text-white">
-                                            <strong className="text-[#e6b17a] mr-2 font-bold font-mono">@{c.user}</strong>
-                                            <span className="font-light italic select-text">"{c.text}"</span>
-                                          </p>
-                                          <span className="block text-[9px] font-mono text-[#a27b5c]">{c.date}</span>
-                                        </div>
+                        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+                          
+                          {/* Publish Gallery Item Form */}
+                          <form onSubmit={handlePublishGallerySubmit} className="xl:col-span-5 bg-[#0e0a07] border border-[#302117] p-5 rounded-2xl space-y-4">
+                            <h5 className="font-serif text-sm font-bold text-[#e6b17a] border-b border-[#302117]/50 pb-2 flex items-center gap-1.5">
+                              <ImageIcon size={15} />
+                              Insert New Media Element
+                            </h5>
 
-                                        <button
-                                          onClick={() => handleDeleteComment(itemId, idx)}
-                                          className="text-red-400 hover:text-white p-1 bg-red-950/20 rounded border border-red-900/30 hover:bg-red-900 transition cursor-pointer"
-                                          title="Delete individual Comment"
-                                        >
-                                          <Trash2 size={11} />
-                                        </button>
-                                      </div>
-                                    ))}
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Media Title</label>
+                              <input
+                                type="text"
+                                required
+                                placeholder="e.g. Acoustic Rehearsals at Cafe Regal"
+                                value={galTitle}
+                                onChange={(e) => setGalTitle(e.target.value)}
+                                className="w-full text-xs bg-[#070504] border border-[#302117] text-white px-3 py-2 rounded focus:outline-none"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Media URL Link</label>
+                              <input
+                                type="url"
+                                required
+                                placeholder="https://images.unsplash.com/..."
+                                value={galUrl}
+                                onChange={(e) => setGalUrl(e.target.value)}
+                                className="w-full text-xs bg-[#070504] border border-[#302117] text-white px-3 py-2 rounded focus:outline-none"
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Core Type</label>
+                                <select
+                                  value={galType}
+                                  onChange={(e: any) => setGalType(e.target.value)}
+                                  className="w-full text-xs bg-[#070504] border border-[#302117] text-white px-2.5 py-2 rounded focus:outline-none cursor-pointer"
+                                >
+                                  <option value="photo">Photo Post</option>
+                                  <option value="video">Video Reel</option>
+                                </select>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Billboard Category</label>
+                                <select
+                                  value={galCategory}
+                                  onChange={(e: any) => setGalCategory(e.target.value)}
+                                  className="w-full text-xs bg-[#070504] border border-[#302117] text-white px-2.5 py-2 rounded focus:outline-none cursor-pointer"
+                                >
+                                  <option value="live">LiveMoments</option>
+                                  <option value="bts">Behind the Stage (BTS)</option>
+                                  <option value="promo">Promo & Podcast</option>
+                                  <option value="quote">Words & Quotes</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Description Caption</label>
+                              <textarea
+                                rows={2}
+                                value={galCaption}
+                                onChange={(e) => setGalCaption(e.target.value)}
+                                className="w-full text-xs bg-[#070504] border border-[#302117] text-white p-2.5 rounded focus:outline-none resize-none"
+                                placeholder="Aesthetic details or quotes..."
+                              />
+                            </div>
+
+                            <button
+                              type="submit"
+                              className="w-full bg-[#bc4123] hover:bg-[#ce4c2a] text-white text-xs font-bold py-2.5 rounded transition cursor-pointer"
+                            >
+                              Publish Media Element
+                            </button>
+
+                            {gallerySuccess && (
+                              <div className="bg-[#121c15] border border-[#235338] p-2 rounded text-xs text-[#a3f0c3] text-center flex items-center justify-center gap-1">
+                                <Check size={12} />
+                                <span>Media item uploaded to dynamic showreel successfully!</span>
+                              </div>
+                            )}
+
+                          </form>
+
+                          {/* Existing Gallery Lists and commenting */}
+                          <div className="xl:col-span-7 space-y-4">
+                            <h5 className="font-serif text-sm font-bold text-[#d1bfae] border-b border-[#302117]/50 pb-2 mb-2">
+                              Showreel Media Items ({gallery.length})
+                            </h5>
+
+                            <div className="grid grid-cols-2 gap-3 max-h-[350px] overflow-y-auto pr-1">
+                              {gallery.map((g) => (
+                                <div key={g.id} className="bg-black/60 border border-[#261c14] rounded-lg p-2 flex gap-3.5 relative hover:border-[#bc4123]/30 transition-all">
+                                  <div className="w-14 h-14 bg-[#1f1610] rounded overflow-hidden shrink-0">
+                                    <img src={g.url} alt={g.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                   </div>
+                                  <div className="text-[11px] space-y-0.5 flex-1 min-w-0">
+                                    <span className="text-[8px] bg-red-950 text-red-300 font-mono px-1 py-0.5 rounded font-black uppercase">
+                                      {g.category}
+                                    </span>
+                                    <p className="text-white font-bold truncate">{g.title}</p>
+                                    <p className="text-[#a27b5c] font-mono text-[9px]">
+                                      ♥ {g.likes} likes • 💬 {comments[g.id]?.length || g.comments} comments
+                                    </p>
+                                  </div>
+                                  <button
+                                    onClick={() => handleDeleteGallery(g.id)}
+                                    className="absolute bottom-1.5 right-1.5 p-1 bg-red-950/20 text-red-400 hover:bg-red-900 rounded hover:text-white transition cursor-pointer"
+                                  >
+                                    <Trash2 size={10} />
+                                  </button>
                                 </div>
-                              );
-                            })}
+                              ))}
+                            </div>
+
+                            <h5 className="font-serif text-sm font-bold text-[#d1bfae] border-b border-[#302117]/50 pb-2 mt-6">
+                              Gallery Reaction Comments
+                            </h5>
+
+                            {Object.keys(comments).length === 0 ? (
+                              <p className="text-xs text-[#a27b5c] italic">No guest feedback comments found.</p>
+                            ) : (
+                              <div className="space-y-4 max-h-[320px] overflow-y-auto pr-1">
+                                {Object.entries(comments).map(([photoId, comms]) => {
+                                  const commsList = comms as any[];
+                                  if (!commsList || commsList.length === 0) return null;
+                                  const parentItem = gallery.find(g => g.id === photoId);
+                                  return (
+                                    <div key={photoId} className="bg-[#100a08] border border-[#2c1e15] p-3.5 rounded-xl space-y-2">
+                                      <div className="text-[10px] font-mono text-[#e6b17a] font-black border-b border-[#302117]/50 pb-1 flex justify-between uppercase">
+                                        <span>Item: {parentItem?.title || photoId}</span>
+                                        <span>({commsList.length} rows)</span>
+                                      </div>
+                                      <div className="space-y-2">
+                                        {commsList.map((c: any, idx: number) => (
+                                          <div key={idx} className="bg-black/30 border border-black/40 p-2 rounded flex justify-between items-start gap-4">
+                                            <div className="text-[11px] leading-snug">
+                                              <strong className="text-[#e6b17a] font-mono mr-1">@{c.user}</strong>
+                                              <span className="text-stone-300 italic">"{c.text}"</span>
+                                              <span className="block text-[8px] font-mono text-[#a27b5c] mt-0.5">{c.date}</span>
+                                            </div>
+                                            <button
+                                              onClick={() => handleDeleteCommentRow(photoId, idx)}
+                                              className="text-red-400 p-0.5 hover:text-red-300 transition cursor-pointer"
+                                            >
+                                              <Trash2 size={11} />
+                                            </button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
                           </div>
-                        )}
+                        </div>
                       </div>
                     )}
 
-
-                    {/* ————————————————— 5. CONTACT INBOX LEADS ————————————————— */}
+                    {/* ————————————————— 4. CONTACT INBOX LEADS ————————————————— */}
                     {activeTab === "leads" && (
                       <div className="space-y-6">
                         <div>
                           <h4 className="font-serif text-lg font-bold text-white mb-1.5">Contact Inbox Proposals ({leads.length})</h4>
                           <p className="text-xs text-[#d1bfae]">
-                            Read detailed booking proposals, show invitations, crowdfunding inquiries, and podcast collaborate applications sent through the online form.
+                            Read custom inquiries, show sponsorships, crowdfunding pitches, and cafe scheduling invitations.
                           </p>
                         </div>
 
                         {leads.length === 0 ? (
                           <div className="border border-dashed border-[#3e2c1f] p-12 text-center rounded-xl text-xs text-[#d1bfae]/60">
-                            No inquiries submitted yet. Post a sample on the contact form to verify!
+                            No inquiries in contact mailbox. Database is clear.
                           </div>
                         ) : (
-                          <div className="space-y-4">
+                          <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
                             {leads.map((lead: any) => (
                               <div key={lead.id} className="bg-[#120d0a] border border-[#3a271b] p-5 rounded-2xl relative hover:border-[#bc4123]/30 transition select-text">
                                 <button
-                                  onClick={() => handleDeleteLead(lead.id)}
+                                  onClick={() => handleDeleteLeadRow(lead.id)}
                                   className="absolute top-4 right-4 p-1.5 bg-red-950/30 text-red-400 border border-red-900/40 rounded-lg hover:bg-red-900 transition cursor-pointer"
-                                  title="Delete inquiry"
                                 >
                                   <Trash2 size={12} />
                                 </button>
@@ -978,7 +1088,7 @@ export default function BackstageAdmin() {
                                     {lead.subject || "Collaboration Detail"}
                                   </span>
                                   <span className="text-[10px] text-[#a27b5c] font-mono font-medium">
-                                    {lead.sentAt || "Just now"}
+                                    {new Date(lead.sentAt).toLocaleString("en-IN")}
                                   </span>
                                 </div>
 
@@ -988,7 +1098,7 @@ export default function BackstageAdmin() {
                                     <span className="text-xs font-bold text-white uppercase">{lead.name}</span>
                                   </div>
                                   <div>
-                                    <span className="text-[10px] text-[#a27b5c] font-mono uppercase block">Email Address String</span>
+                                    <span className="text-[10px] text-[#a27b5c] font-mono uppercase block">Email Address</span>
                                     <span className="text-xs font-mono text-[#e6b17a] font-semibold">{lead.email}</span>
                                   </div>
                                 </div>
@@ -1004,6 +1114,205 @@ export default function BackstageAdmin() {
                           </div>
                         )}
                       </div>
+                    )}
+
+                    {/* ————————————————— 5. SITE COPY PARAMETERS OVERRIDES ————————————————— */}
+                    {activeTab === "settings" && (
+                      <form onSubmit={handleUpdateSettingsSubmit} className="space-y-6">
+                        <div>
+                          <h4 className="font-serif text-lg font-bold text-white mb-1.5">Override Website Copy & Information Details</h4>
+                          <p className="text-xs text-[#d1bfae]">
+                            Correct general typos, edit tagline headers, adapt the Jamshedpur bio details, or configure Spotify embeds! What you modify here automatically, instantly updates across all spectators in real-time.
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                          
+                          {/* Main Home Details */}
+                          <div className="bg-[#120e0c] border border-[#34241a] p-5 rounded-2xl space-y-4">
+                            <h5 className="font-serif text-sm font-bold text-[#e6b17a] border-b border-[#302117] pb-2 flex items-center gap-1.5">
+                              <Settings size={14} className="text-[#bc4123]" />
+                              Homepage Branding details
+                            </h5>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Show Logo Title</label>
+                              <input
+                                type="text"
+                                required
+                                value={editedShowTitle}
+                                onChange={(e) => setEditedShowTitle(e.target.value)}
+                                className="w-full text-xs bg-[#0b0705] border border-[#3e2b1d] text-white px-3 py-2 rounded focus:outline-none"
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Bengali script Logo</label>
+                                <input
+                                  type="text"
+                                  value={editedBengaliTitle}
+                                  onChange={(e) => setEditedBengaliTitle(e.target.value)}
+                                  className="w-full text-xs bg-[#0b0705] border border-[#3e2b1d] text-white px-3 py-2 rounded focus:outline-none"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Hindi script Logo</label>
+                                  <input
+                                  type="text"
+                                  value={editedHindiTitle}
+                                  onChange={(e) => setEditedHindiTitle(e.target.value)}
+                                  className="w-full text-xs bg-[#0b0705] border border-[#3e2b1d] text-white px-3 py-2 rounded focus:outline-none"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Hero Tagline Primary</label>
+                              <input
+                                type="text"
+                                required
+                                value={editedTagline}
+                                onChange={(e) => setEditedTagline(e.target.value)}
+                                className="w-full text-xs bg-[#0b0705] border border-[#3e2b1d] text-white px-3 py-2 rounded focus:outline-none"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Hero Tagline Secondary</label>
+                              <input
+                                type="text"
+                                required
+                                value={editedTaglineSec}
+                                onChange={(e) => setEditedTaglineSec(e.target.value)}
+                                className="w-full text-xs bg-[#0b0705] border border-[#3e2b1d] text-white px-3 py-2 rounded focus:outline-none"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">About Narrative Block</label>
+                              <textarea
+                                rows={4}
+                                required
+                                value={editedAboutNarrative}
+                                onChange={(e) => setEditedAboutNarrative(e.target.value)}
+                                className="w-full text-xs bg-[#0b0705] border border-[#3e2b1d] text-white p-2.5 rounded focus:outline-none resize-none leading-relaxed"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Spotify PODCAST EMBED (IFRAME SRC LINK)</label>
+                              <input
+                                type="text"
+                                value={editedAudioSpotify}
+                                onChange={(e) => setEditedAudioSpotify(e.target.value)}
+                                className="w-full text-xs bg-[#0b0705] border border-[#3e2b1d] text-white px-3 py-2 rounded focus:outline-none font-mono"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Performer Details */}
+                          <div className="bg-[#120e0c] border border-[#34241a] p-5 rounded-2xl space-y-4">
+                            <h5 className="font-serif text-sm font-bold text-[#e6b17a] border-b border-[#302117] pb-2 flex items-center gap-1.5">
+                              <User size={14} className="text-[#bc4123]" />
+                              Artist Biography & Stats Details
+                            </h5>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Artist Name</label>
+                              <input
+                                type="text"
+                                required
+                                value={editedPerfName}
+                                onChange={(e) => setEditedPerfName(e.target.value)}
+                                className="w-full text-xs bg-[#0b0705] border border-[#3e2b1d] text-white px-3 py-2 rounded focus:outline-none"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Artist Role/Subtitle</label>
+                              <input
+                                type="text"
+                                required
+                                value={editedPerfSubtitle}
+                                onChange={(e) => setEditedPerfSubtitle(e.target.value)}
+                                className="w-full text-xs bg-[#0b0705] border border-[#3e2b1d] text-white px-3 py-2 rounded focus:outline-none"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Biographical Hook</label>
+                              <input
+                                type="text"
+                                required
+                                value={editedPerfTitleText}
+                                onChange={(e) => setEditedPerfTitleText(e.target.value)}
+                                className="w-full text-xs bg-[#0b0705] border border-[#3e2b1d] text-white px-3 py-2 rounded focus:outline-none"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-mono font-bold text-[#a27b5c] uppercase">Biography narrative markdown</label>
+                              <textarea
+                                rows={4}
+                                required
+                                value={editedPerfBioLong}
+                                onChange={(e) => setEditedPerfBioLong(e.target.value)}
+                                className="w-full text-xs bg-[#0b0705] border border-[#3e2b1d] text-white p-2.5 rounded focus:outline-none resize-none leading-relaxed"
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-3">
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-mono font-bold text-[#a27b5c] uppercase">Listeners count</label>
+                                <input
+                                  type="text"
+                                  required
+                                  value={editedStatListeners}
+                                  onChange={(e) => setEditedStatListeners(e.target.value)}
+                                  className="w-full text-xs bg-[#0b0705] border border-[#3e2b1d] text-white px-3 py-2 rounded focus:outline-none font-mono text-center"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-mono font-bold text-[#a27b5c] uppercase">Concerts Finished</label>
+                                <input
+                                  type="text"
+                                  required
+                                  value={editedStatShows}
+                                  onChange={(e) => setEditedStatShows(e.target.value)}
+                                  className="w-full text-xs bg-[#0b0705] border border-[#3e2b1d] text-white px-3 py-2 rounded focus:outline-none font-mono text-center"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-mono font-bold text-[#a27b5c] uppercase">Cafe partnerships</label>
+                                <input
+                                  type="text"
+                                  required
+                                  value={editedStatCafes}
+                                  onChange={(e) => setEditedStatCafes(e.target.value)}
+                                  className="w-full text-xs bg-[#0b0705] border border-[#3e2b1d] text-white px-3 py-2 rounded focus:outline-none font-mono text-center"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                        </div>
+
+                        <div className="pt-4 flex items-center justify-between border-t border-[#302117] shrink-0">
+                          {settingsSuccess && (
+                            <span className="text-xs text-green-400 font-serif italic animate-bounce flex items-center gap-1">
+                              <Check size={12} /> Modifications propagated and pushed to Firestore successfully!
+                            </span>
+                          )}
+                          <div />
+                          <button
+                            type="submit"
+                            className="bg-[#bc4123] hover:bg-[#ce4c2a] text-white text-xs font-bold px-6 py-2.5 rounded-lg shadow transition cursor-pointer"
+                          >
+                            Propagate Changes Globally
+                          </button>
+                        </div>
+                      </form>
                     )}
 
                   </div>

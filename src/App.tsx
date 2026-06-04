@@ -7,6 +7,7 @@ import GallerySection from "./components/GallerySection";
 import BookingTours from "./components/BookingTours";
 import ParchmentWall from "./components/ParchmentWall";
 import ContactForm from "./components/ContactForm";
+import BackstageAdmin from "./components/BackstageAdmin";
 import { useAjeebData } from "./context/AjeebDataContext";
 import { Instagram, Youtube, Sparkles, Heart, Anchor, Coffee } from "lucide-react";
 
@@ -160,6 +161,9 @@ export default function App() {
               Crafted in Jamshedpur, Jharkhand • Honoring her late father's legacy of resilience.
             </p>
           </div>
+
+          {/* Secure Backstage Admin Gate */}
+          <BackstageAdmin />
 
         </div>
       </footer>

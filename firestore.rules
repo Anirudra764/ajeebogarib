@@ -17,7 +17,10 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email == "anirudrapaul31@gmail.com" && request.auth.token.email_verified == true)
+      );
     }
 
     function isValidId(id) {
@@ -52,12 +55,59 @@ service cloud.firestore {
              data.uid is string;
     }
 
+    function isValidShow(data) {
+      return data.id is string &&
+             data.title is string && data.title.size() <= 250 &&
+             data.venue is string && data.venue.size() <= 250 &&
+             data.date is string && data.date.size() <= 50 &&
+             data.time is string && data.time.size() <= 50 &&
+             data.price is string && data.price.size() <= 50 &&
+             data.status is string && (data.status == "upcoming" || data.status == "soldout" || data.status == "completed");
+    }
+
+    function isValidGalleryItem(data) {
+      return data.id is string &&
+             data.type is string && (data.type == "photo" || data.type == "video") &&
+             data.url is string && data.url.size() <= 1000 &&
+             data.title is string && data.title.size() <= 250 &&
+             data.category is string && (data.category == "live" || data.category == "bts" || data.category == "promo" || data.category == "quote") &&
+             data.likes is int && data.likes >= 0 &&
+             data.comments is int && data.comments >= 0;
+    }
+
+    function isValidComment(data) {
+      return data.id is string &&
+             data.photoId is string &&
+             data.user is string && data.user.size() <= 100 &&
+             data.text is string && data.text.size() <= 2000 &&
+             data.date is string;
+    }
+
+    function isValidLead(data) {
+      return data.id is string &&
+             data.name is string && data.name.size() <= 100 &&
+             data.email is string && data.email.size() <= 200 &&
+             data.subject is string && data.subject.size() <= 200 &&
+             data.message is string && data.message.size() <= 5000 &&
+             data.sentAt is string;
+    }
+
+    function isValidSetting(data) {
+      return data.id is string && data.data is map;
+    }
+
     // Users collection rules
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId) && isValidUser(incoming());
       allow update: if isOwner(userId) && isValidUser(incoming()) && incoming().uid == existing().uid;
       allow delete: if isAdmin();
+    }
+
+    // Admin lookup helper collection
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (request.auth.token.email == "anirudrapaul31@gmail.com" || isAdmin());
     }
 
     // Bookings collection rules
@@ -67,10 +117,46 @@ service cloud.firestore {
       allow update, delete: if isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
     }
 
-    // Admin lookup helper collection
-    match /admins/{adminId} {
-      allow read: if isSignedIn();
-      allow write: if false; // Only configured through GCP/Firebase Console securely
+    // Shows/Events collection rules
+    match /shows/{showId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if (isAdmin() && isValidShow(incoming())) || (
+        // Let user update tickets status if required, but with narrow validations if needed
+        isAdmin()
+      );
+    }
+
+    // Gallery item collection rules (supports likes increment)
+    match /gallery/{itemId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if (isAdmin() && isValidGalleryItem(incoming())) || (
+        // Allow public to increment likes only
+        incoming().diff(existing()).affectedKeys().hasOnly(['likes']) &&
+        incoming().likes == existing().likes + 1
+      );
+    }
+
+    // Gallery reactions/comments matching
+    match /gallery_comments/{commentId} {
+      allow read: if true;
+      allow create: if isValidComment(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // Contact form leads collection
+    match /leads/{leadId} {
+      allow create: if isValidLead(incoming());
+      allow read: if isAdmin();
+      allow delete: if isAdmin();
+      allow update: if false;
+    }
+
+    // Generic home page settings overrides
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidSetting(incoming());
     }
   }
 }
