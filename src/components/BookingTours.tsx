@@ -1,13 +1,23 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { MapPin, Calendar, Clock, Ticket, Sparkles, User, Mail, Phone, ShoppingBag, Download, Check, Trash2, Heart } from "lucide-react";
-import { UPCOMING_EVENTS } from "../data";
+import { useAjeebData } from "../context/AjeebDataContext";
 import { PerformanceShow, TicketReservation } from "../types";
 
 export default function BookingTours() {
-  const [shows] = useState<PerformanceShow[]>(UPCOMING_EVENTS);
+  const { 
+    shows, 
+    bookings, 
+    submitReservation, 
+    cancelReservation,
+    currentUser,
+    signUpWithEmail,
+    signInWithEmail,
+    signInWithGoogle,
+    signOutUser
+  } = useAjeebData();
+  
   const [selectedShow, setSelectedShow] = useState<PerformanceShow | null>(null);
-  const [bookings, setBookings] = useState<TicketReservation[]>([]);
   
   // Form input states
   const [userName, setUserName] = useState("");
@@ -16,28 +26,44 @@ export default function BookingTours() {
   const [ticketCount, setTicketCount] = useState(1);
   const [successReservation, setSuccessReservation] = useState<TicketReservation | null>(null);
 
-  // Synchronize dynamic offline local storage bookmarks for permanent reservations history!
-  useEffect(() => {
-    try {
-      const savedBookings = localStorage.getItem("ajeeb_bookings_store");
-      if (savedBookings) {
-        setBookings(JSON.parse(savedBookings));
-      }
-    } catch (e) {
-      console.warn("Storage reading error: ", e);
-    }
-  }, []);
+  // Authentication states
+  const [authMode, setAuthMode] = useState<"authenticate" | "details">("authenticate");
+  const [emailTab, setEmailTab] = useState<"signin" | "signup">("signin");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authName, setAuthName] = useState("");
+  const [authError, setAuthError] = useState("");
 
-  const saveBookingsToStorage = (newBookings: TicketReservation[]) => {
-    setBookings(newBookings);
+  // Track user login state
+  React.useEffect(() => {
+    if (currentUser) {
+      if (currentUser.displayName) setUserName(currentUser.displayName);
+      if (currentUser.email) setUserEmail(currentUser.email);
+      setAuthMode("details");
+    } else {
+      setAuthMode("authenticate");
+    }
+  }, [currentUser]);
+
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError("");
     try {
-      localStorage.setItem("ajeeb_bookings_store", JSON.stringify(newBookings));
-    } catch (e) {
-      console.error(e);
+      if (emailTab === "signin") {
+        await signInWithEmail(authEmail, authPassword);
+      } else {
+        if (!authName.trim()) {
+          setAuthError("Name is required to register.");
+          return;
+        }
+        await signUpWithEmail(authEmail, authPassword, authName.trim());
+      }
+    } catch (err: any) {
+      setAuthError(err?.message || "Failed to authenticate.");
     }
   };
 
-  const handleBookingSubmit = (e: React.FormEvent) => {
+  const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedShow) return;
 
@@ -46,8 +72,7 @@ export default function BookingTours() {
       return;
     }
 
-    const tix: TicketReservation = {
-      id: `TIX-${Math.floor(100000 + Math.random() * 900000)}`,
+    const newResInput = {
       showId: selectedShow.id,
       showTitle: selectedShow.title,
       date: selectedShow.date,
@@ -55,24 +80,30 @@ export default function BookingTours() {
       email: userEmail.trim(),
       phone: userPhone.trim(),
       ticketsCount: ticketCount,
-      reservedAt: new Date().toLocaleDateString("en-IN"),
-      status: "confirmed"
+      status: "confirmed" as const
     };
 
-    const updated = [tix, ...bookings];
-    saveBookingsToStorage(updated);
-    setSuccessReservation(tix);
-    
-    // Clear inputs
-    setUserName("");
-    setUserEmail("");
-    setUserPhone("");
-    setTicketCount(1);
+    const ok = await submitReservation(newResInput);
+    if (ok) {
+      const tempId = `TIX-${Math.floor(100000 + Math.random() * 900000)}`;
+      const simulatedTicket: TicketReservation = {
+        id: tempId,
+        ...newResInput,
+        reservedAt: new Date().toLocaleDateString("en-IN")
+      };
+      setSuccessReservation(simulatedTicket);
+      
+      setUserName("");
+      setUserEmail("");
+      setUserPhone("");
+      setTicketCount(1);
+    } else {
+      alert("Something went wrong during reservation transmission.");
+    }
   };
 
-  const handleDeleteBooking = (id: string) => {
-    const updated = bookings.filter(b => b.id !== id);
-    saveBookingsToStorage(updated);
+  const handleDeleteBooking = async (id: string) => {
+    await cancelReservation(id);
     if (successReservation && successReservation.id === id) {
       setSuccessReservation(null);
     }
@@ -411,9 +442,9 @@ export default function BookingTours() {
                     </button>
                   </div>
                 </div>
-              ) : (
-                /* Primary Reservation Form */
-                <form onSubmit={handleBookingSubmit} className="p-6 space-y-4">
+              ) : authMode === "authenticate" && !currentUser ? (
+                /* Auth Screen inside modal */
+                <div className="p-6 space-y-6">
                   <div className="bg-[#1b120c] border border-[#3e2c1f] p-4 rounded-xl text-xs space-y-1">
                     <span className="font-mono text-[#a27b5c] uppercase text-[10px]">active selection</span>
                     <h4 className="font-serif font-bold text-[#e6b17a] text-sm">
@@ -424,8 +455,159 @@ export default function BookingTours() {
                     </p>
                   </div>
 
+                  <div className="text-center space-y-2">
+                    <h4 className="font-serif text-[#e6b17a] text-lg font-bold">
+                      {emailTab === "signin" ? "Sign In to Your Vault" : "Create Spectator Vault Account"}
+                    </h4>
+                    <p className="text-xs text-[#d1bfae]/80 max-w-sm mx-auto">
+                      Authorized bookings are synchronized securely to our cloud system.
+                    </p>
+                  </div>
+
+                  {/* Auth Methods */}
+                  <div className="space-y-4">
+                    {/* Google Sign In */}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          setAuthError("");
+                          await signInWithGoogle();
+                        } catch (err: any) {
+                          setAuthError(err.message || "Google Sign-In failed.");
+                        }
+                      }}
+                      className="w-full bg-[#1b120c] hover:bg-[#251710] border border-[#52331f] text-white hover:text-[#e6b17a] text-xs font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2.5 transition-all cursor-pointer"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24">
+                        <path fill="#ea4335" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                        <path fill="#34a853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                        <path fill="#fbbc05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                        <path fill="#4285f4" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                      </svg>
+                      <span>Continue with Google Account</span>
+                    </button>
+
+                    <div className="flex items-center justify-between text-[11px] text-[#a27b5c] font-mono">
+                      <div className="w-1/3 h-[1px] bg-[#3e2c1f]"></div>
+                      <span>OR USE EMAIL</span>
+                      <div className="w-1/3 h-[1px] bg-[#3e2c1f]"></div>
+                    </div>
+
+                    {/* Email/Pass Form */}
+                    <form onSubmit={handleAuthSubmit} className="space-y-3">
+                      {authError && (
+                        <div className="bg-red-950/50 border border-red-800 text-red-300 text-[10px] px-3 py-2 rounded-lg text-center font-mono">
+                          {authError}
+                        </div>
+                      )}
+
+                      {emailTab === "signup" && (
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-mono font-semibold text-[#a27b5c] uppercase block text-left">
+                            Your Name
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. Partha Sarthi"
+                            value={authName}
+                            onChange={(e) => setAuthName(e.target.value)}
+                            className="w-full text-xs bg-[#0b0705] border border-[#3e2b1d] focus:border-[#e6b17a] text-white px-3 py-2.5 rounded focus:outline-none"
+                          />
+                        </div>
+                      )}
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-mono font-semibold text-[#a27b5c] uppercase block text-left">
+                          Email Address
+                        </label>
+                        <input
+                          type="email"
+                          required
+                          placeholder="e.g. partha@gmail.com"
+                          value={authEmail}
+                          onChange={(e) => setAuthEmail(e.target.value)}
+                          className="w-full text-xs bg-[#0b0705] border border-[#3e2b1d] focus:border-[#e6b17a] text-white px-3 py-2.5 rounded focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-mono font-semibold text-[#a27b5c] uppercase block text-left">
+                          Password
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          placeholder="Min. 6 characters"
+                          value={authPassword}
+                          onChange={(e) => setAuthPassword(e.target.value)}
+                          className="w-full text-xs bg-[#0b0705] border border-[#3e2b1d] focus:border-[#e6b17a] text-white px-3 py-2.5 rounded focus:outline-none"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full bg-[#bc4123] hover:bg-[#ce4c2a] text-white text-xs font-bold py-3 rounded-lg mt-2 cursor-pointer uppercase font-mono tracking-wider transition-all"
+                      >
+                        {emailTab === "signin" ? "Sign In & Continue" : "Register Account"}
+                      </button>
+                    </form>
+
+                    {/* Toggle email auth tab */}
+                    <div className="flex justify-between items-center text-xs pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEmailTab(emailTab === "signin" ? "signup" : "signin");
+                          setAuthError("");
+                        }}
+                        className="text-[#e6b17a] hover:underline"
+                      >
+                        {emailTab === "signin" ? "Don't have an account? Sign Up" : "Back to Sign In"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setAuthMode("details")}
+                        className="text-[#a27b5c] hover:text-white underline font-medium"
+                      >
+                        Continue as Guest →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Primary Reservation Form */
+                <form onSubmit={handleBookingSubmit} className="p-6 space-y-4 text-left">
+                  {currentUser && (
+                    <div className="bg-[#121c15] border border-[#235338] px-4 py-2.5 rounded-xl flex items-center justify-between text-xs text-[#a3f0c3]">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>Logged in as <strong>{currentUser.email}</strong></span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => signOutUser()}
+                        className="text-[#bc4123] hover:text-white underline text-[11px] font-semibold cursor-pointer"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="bg-[#1b120c] border border-[#3e2c1f] p-4 rounded-xl text-xs space-y-1">
+                    <span className="font-mono text-[#a27b5c] uppercase text-[10px]">active selection</span>
+                    <h4 className="font-serif font-bold text-[#e6b17a] text-sm text-left">
+                      {selectedShow.title}
+                    </h4>
+                    <p className="text-[#d1bfae] font-light text-left">
+                      {selectedShow.venue} • {selectedShow.location} • {selectedShow.date}
+                    </p>
+                  </div>
+
                   <div className="space-y-1">
-                    <label className="text-xs font-mono font-semibold text-[#a27b5c] uppercase block">
+                    <label className="text-xs font-mono font-semibold text-[#a27b5c] uppercase block text-left">
                       Full Guest Name
                     </label>
                     <div className="relative">
@@ -443,7 +625,7 @@ export default function BookingTours() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-mono font-semibold text-[#a27b5c] uppercase block">
+                    <label className="text-xs font-mono font-semibold text-[#a27b5c] uppercase block text-left">
                       Email Address
                     </label>
                     <div className="relative">
@@ -461,7 +643,7 @@ export default function BookingTours() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-mono font-semibold text-[#a27b5c] uppercase block">
+                    <label className="text-xs font-mono font-semibold text-[#a27b5c] uppercase block text-left">
                       WhatsApp Phone Number
                     </label>
                     <div className="relative">
@@ -480,7 +662,7 @@ export default function BookingTours() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-mono font-semibold text-[#a27b5c] uppercase block mb-1">
+                      <label className="text-xs font-mono font-semibold text-[#a27b5c] uppercase block mb-1 text-left">
                         Seat Tickets
                       </label>
                       <select
@@ -498,7 +680,7 @@ export default function BookingTours() {
                     </div>
 
                     <div>
-                      <span className="text-xs font-mono font-semibold text-[#a27b5c] block mb-1 uppercase">
+                      <span className="text-xs font-mono font-semibold text-[#a27b5c] block mb-1 uppercase text-left">
                         Seat Contribution
                       </span>
                       <div className="bg-[#1a120c] border border-[#3e2b1d] px-3 py-2 rounded text-base font-serif font-black text-[#e6b17a]">
@@ -514,6 +696,17 @@ export default function BookingTours() {
                   >
                     Confirm simulated Seat & Print Ticket
                   </button>
+
+                  {!currentUser && (
+                    <button
+                      type="button"
+                      onClick={() => setAuthMode("authenticate")}
+                      className="w-full text-center text-[11px] text-[#e6b17a] hover:underline cursor-pointer"
+                    >
+                      ← Back to Secure Login Vault Option
+                    </button>
+                  )}
+
                   <p className="text-[10px] text-center text-[#a27b5c] italic">
                     By reserving options, you support Jamshedpur independent musical storytelling.
                   </p>

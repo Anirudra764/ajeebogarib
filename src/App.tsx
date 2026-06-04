@@ -7,11 +7,12 @@ import GallerySection from "./components/GallerySection";
 import BookingTours from "./components/BookingTours";
 import ParchmentWall from "./components/ParchmentWall";
 import ContactForm from "./components/ContactForm";
-import { SHOW_DETAILS, PERFORMER_BIO } from "./data";
+import { useAjeebData } from "./context/AjeebDataContext";
 import { Instagram, Youtube, Sparkles, Heart, Anchor, Coffee } from "lucide-react";
 
 export default function App() {
   const [activeSection, setActiveSection] = useState("hero");
+  const { showDetails } = useAjeebData();
 
   // Intersection Observer to track active section dynamically
   useEffect(() => {
@@ -96,21 +97,21 @@ export default function App() {
             id="footer-logo-btn"
           >
             <span className="font-serif text-2xl font-black tracking-tight text-[#e6b17a]">
-              {SHOW_DETAILS.title}
+              {showDetails.title}
             </span>
             <span className="font-serif text-xs text-[#a27b5c] tracking-widest mt-0.5">
-              {SHOW_DETAILS.hindiTitle} • LIVE STORYTELLING MUSICAL
+              {showDetails.bengaliTitle || showDetails.hindiTitle} • LIVE STORYTELLING MUSICAL
             </span>
           </button>
 
           {/* Tagline Reverb */}
           <p className="font-light italic text-[#d1bfae]/80 max-w-lg text-sm mb-6 leading-relaxed">
-            "Feelings with reverb, stories with voice. Strange, surreal, and seriously unmissable."
+            "{showDetails.taglineSecondary || "Feelings with reverb, stories with voice"}"
           </p>
 
           <p className="text-xs text-[#a27b5c] uppercase tracking-wider font-semibold mb-8 flex items-center justify-center gap-1.5">
             <Coffee size={14} className="text-[#bc4123]" />
-            Musical Storyteller at {SHOW_DETAILS.title}, Jamshedpur
+            Musical Storyteller at {showDetails.title}, Jamshedpur
           </p>
 
           {/* Social Links Row */}

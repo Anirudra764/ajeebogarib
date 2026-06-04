@@ -1,7 +1,10 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Play, Calendar, HelpCircle, Volume2, VolumeX, Flame, Sparkles, ChevronDown } from "lucide-react";
-import { SHOW_DETAILS } from "../data";
+import { 
+  Play, Calendar, Volume2, Flame, Sparkles, ChevronDown, 
+  Phone, MessageSquare, ExternalLink, QrCode, Check, Award 
+} from "lucide-react";
+import { useAjeebData } from "../context/AjeebDataContext";
 
 interface HeroProps {
   scrollToSection: (id: string) => void;
@@ -10,12 +13,13 @@ interface HeroProps {
 export default function Hero({ scrollToSection }: HeroProps) {
   const [isPlayingTeaser, setIsPlayingTeaser] = useState(false);
   const [activeHarmonic, setActiveHarmonic] = useState<string | null>(null);
+  const [copiedPhone, setCopiedPhone] = useState(false);
+  const { showDetails } = useAjeebData();
 
-  // Simple Web Audio API Synthesizer to create beautiful ambient organic guitar-like cozy sounds on tap! 
-  // It gives the user a genuine acoustic trigger that makes the storytelling portal feel interactive.
+  // Web Audio Context Synthesizer with vintage warmth
   const playHarmonic = (note: string, freq: number) => {
     setActiveHarmonic(note);
-    setTimeout(() => setActiveHarmonic(null), 800);
+    setTimeout(() => setActiveHarmonic(null), 850);
 
     try {
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
@@ -25,29 +29,27 @@ export default function Hero({ scrollToSection }: HeroProps) {
       const osc = ctx.createOscillator();
       const gainNode = ctx.createGain();
       
-      // Storyteller vintage warmth: triangle wave
+      // Warm, vintage acoustic wave
       osc.type = "sine";
       osc.frequency.setValueAtTime(freq, ctx.currentTime);
-      // Soft vibrato
-      osc.frequency.exponentialRampToValueAtTime(freq * 1.01, ctx.currentTime + 0.1);
-      osc.frequency.exponentialRampToValueAtTime(freq, ctx.currentTime + 0.3);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.008, ctx.currentTime + 0.15);
+      osc.frequency.exponentialRampToValueAtTime(freq, ctx.currentTime + 0.45);
 
-      gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+      gainNode.gain.setValueAtTime(0.35, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.4);
 
-      // Low pass filter for warm dusty texture
       const filter = ctx.createBiquadFilter();
       filter.type = "lowpass";
-      filter.frequency.setValueAtTime(800, ctx.currentTime);
+      filter.frequency.setValueAtTime(850, ctx.currentTime);
 
       osc.connect(filter);
       filter.connect(gainNode);
       gainNode.connect(ctx.destination);
       
       osc.start();
-      osc.stop(ctx.currentTime + 1.3);
+      osc.stop(ctx.currentTime + 1.5);
     } catch (e) {
-      console.warn("Audio Context not allowed by browser permissions until user interacts directly.", e);
+      console.warn("Audio Context blocked by browser safety protocol.", e);
     }
   };
 
@@ -58,303 +60,305 @@ export default function Hero({ scrollToSection }: HeroProps) {
     { note: "G maj (The Stage Return)", freq: 392.00, bg: "from-[#bc4123] to-[#511608]" }
   ];
 
+  const handleCopyPhone = () => {
+    navigator.clipboard.writeText("8252933956");
+    setCopiedPhone(true);
+    setTimeout(() => setCopiedPhone(false), 2500);
+  };
+
   return (
     <section
       id="hero"
-      className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20 pb-16 bg-[#0f0a07]"
+      className="relative min-h-screen flex items-center justify-center overflow-hidden pt-24 pb-20 bg-black"
     >
-      {/* Decorative Warm Backlights & Atmosphere */}
+      {/* Dynamic Background Atmosphere and Backlights */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute top-1/4 left-1/4 w-[150px] sm:w-[350px] h-[150px] sm:h-[350px] rounded-full bg-[#8c2a1c]/25 blur-[60px] sm:blur-[120px]" />
-        <div className="absolute bottom-1/4 right-1/4 w-[180px] sm:w-[400px] h-[180px] sm:h-[400px] rounded-full bg-[#e6b17a]/15 blur-[80px] sm:blur-[140px]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(ellipse_at_center,rgba(40,25,15,0.7),rgba(15,10,7,1))]" />
+        <div className="absolute top-1/10 left-1/12 w-[220px] sm:w-[450px] h-[220px] sm:h-[450px] rounded-full bg-[#bc4123]/15 blur-[80px] sm:blur-[140px]" />
+        <div className="absolute bottom-1/12 right-1/10 w-[250px] sm:w-[500px] h-[250px] sm:h-[500px] rounded-full bg-yellow-600/10 blur-[100px] sm:blur-[180px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(20,12,8,0.75),rgba(0,0,0,1))]" />
         
-        {/* Subtle retro overlay grid pattern */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:30px_30px] opacity-10" />
+        {/* Subtle grid mesh overlay */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.008)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.008)_1px,transparent_1px)] bg-[size:40px_40px] opacity-20" />
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center">
-        {/* Status Badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="flex items-center space-x-2 bg-[#2d190e] border border-[#52331f] px-3.5 py-1.5 rounded-full text-xs text-[#e6b17a] font-medium tracking-wide mb-6 uppercase"
-        >
-          <Flame size={12} className="text-[#bc4123] animate-pulse" />
-          <span>Live 100-Minute Musical Storytelling Experience</span>
-        </motion.div>
+      <div className="relative z-10 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col items-center text-center space-y-10">
+          
+          {/* ————————————————— CENTER CONCERT BRANDING & INTERACTIVE PANEL ————————————————— */}
+          <div className="w-full space-y-8 text-center flex flex-col items-center">
+            
+            {/* Spotlight Banner Badge */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6 }}
+              className="inline-flex items-center space-x-2 bg-[#1c0f09] border border-[#5c3e29] px-4 py-1.5 rounded-full text-xs text-[#e6b17a] font-medium tracking-wide uppercase"
+            >
+              <Flame size={12} className="text-[#bc4123] animate-pulse" />
+              <span>AJEEB-O-GAREEB • CONCERT PROFILE</span>
+            </motion.div>
 
-        {/* Hindi Calligraphic Subtitle Wrapper */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.1, duration: 0.8 }}
-          className="mb-2"
-        >
-          <span className="font-serif text-lg sm:text-2xl text-[#a27b5c]/95 italic tracking-wide">
-            {SHOW_DETAILS.hindiTitle}
-          </span>
-        </motion.div>
-
-        {/* Full Show Title */}
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.8 }}
-          className="font-serif text-5xl sm:text-7xl md:text-8xl font-black text-[#f7ede2] tracking-tight leading-none mb-6 relative"
-          id="hero-title"
-        >
-          Ajeeb-o-Gareeb
-          <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-24 h-[2px] bg-gradient-to-r from-transparent via-[#bc4123] to-transparent"></span>
-        </motion.h1>
-
-        {/* Tagline */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4, duration: 0.8 }}
-          className="max-w-2xl text-base sm:text-lg text-[#e6b17a] italic font-medium tracking-wide mb-4 mt-2"
-        >
-          "{SHOW_DETAILS.tagline}"
-        </motion.p>
-
-        {/* Subtitle Details */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5, duration: 0.8 }}
-          className="max-w-3xl text-sm sm:text-base text-[#d1bfae] mb-10 leading-relaxed font-light"
-        >
-          {SHOW_DETAILS.subtitle}
-        </motion.p>
-
-        {/* Call to Actions Buttons */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.8 }}
-          className="flex flex-col sm:flex-row items-center gap-4 mb-16"
-        >
-          <button
-            onClick={() => scrollToSection("events")}
-            className="w-full sm:w-auto bg-gradient-to-r from-[#8c2a1c] to-[#bc4123] hover:from-[#a03625] hover:to-[#ce4c2a] text-white font-medium px-8 py-3.5 rounded-lg shadow-xl border border-[#91311e] flex items-center justify-center space-x-2 tracking-wider transition-all hover:translate-y-[-2px] active:translate-y-0 cursor-pointer"
-            id="hero-book-btn"
-          >
-            <Calendar size={18} />
-            <span>Book Show Seats</span>
-          </button>
-
-          <button
-            onClick={() => setIsPlayingTeaser(true)}
-            className="w-full sm:w-auto bg-[#1a120e] hover:bg-[#281c16] text-[#e6b17a] hover:text-[#f3d4b3] font-medium px-8 py-3.5 rounded-lg border border-[#483325] flex items-center justify-center space-x-2 transition-all hover:translate-y-[-2px] active:translate-y-0 cursor-pointer"
-            id="hero-watch-btn"
-          >
-            <Play size={18} className="fill-current text-[#e6b17a]" />
-            <span>Watch Live Teaser</span>
-          </button>
-        </motion.div>
-
-        {/* Dynamic Interactive Instrument Widget (Acoustic Guitar Soundboard Block) */}
-        <motion.div
-          initial={{ opacity: 0, y: 25 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7, duration: 0.8 }}
-          className="w-full max-w-xl bg-[#160f0b]/80 border border-[#3a271c] p-6 rounded-2xl shadow-2xl backdrop-blur-sm relative"
-          id="acoustic-soundboard"
-        >
-          <div className="absolute top-2 right-4 flex items-center space-x-1.5 text-[10px] text-[#a27b5c] font-mono uppercase tracking-widest">
-            <Volume2 size={12} className="text-[#e6b17a]" />
-            <span>Acoustic Ambient Board</span>
-          </div>
-
-          <div className="text-left mb-4">
-            <h4 className="text-xs font-semibold text-[#e6b17a] font-mono tracking-wider uppercase mb-1">
-              Tap to Strum Narrative Harmonics
-            </h4>
-            <p className="text-[11px] text-[#d1bfae]/75">
-              Experience the emotional reverb chords of "Ajeeb-o-Gareeb" that Annesha triggers on stage.
-            </p>
-          </div>
-
-          {/* Harmonic Chord Triggers */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {chords.map((chord) => (
-              <button
-                key={chord.note}
-                onClick={() => playHarmonic(chord.note, chord.freq)}
-                className={`relative py-3 px-2 rounded-lg border text-left flex flex-col justify-between overflow-hidden transition-all duration-300 transform active:scale-95 ${
-                  activeHarmonic === chord.note
-                    ? "bg-gradient-to-r " + chord.bg + " border-[#e6b17a]"
-                    : "bg-[#0b0705] hover:bg-[#1f1510] border-[#3a271c]"
-                }`}
-                id={`chord-${chord.note.substring(0, 1).toLowerCase()}`}
+            {/* Red Bengali calligraphy representation & main titles */}
+            <div className="space-y-4 flex flex-col items-center w-full">
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1, duration: 0.7 }}
+                className="flex items-center justify-center gap-3.5"
               >
-                {/* Visualizer ripple if active */}
-                {activeHarmonic === chord.note && (
-                  <span className="absolute inset-0 bg-white/5 animate-ping rounded-lg pointer-events-none" />
-                )}
-
-                <span className="text-[11px] font-mono text-[#a27b5c] font-semibold tracking-wider">
-                  TRIGGER CHORD
+                <span className="font-serif text-3xl sm:text-4xl text-[#bc4123] font-black tracking-widest bg-red-950/20 border border-red-950 px-4 py-1 rounded-xl shadow-lg shadow-red-950/20 antialiased selection:bg-[#fff] selection:text-red-600">
+                  {showDetails.bengaliTitle || "অজিব ও গরিব"}
                 </span>
-                <span className="text-xs font-bold text-[#f7ede2] mt-3 block truncate">
-                  {chord.note}
+                <span className="font-serif text-sm text-[#a27b5c] uppercase tracking-widest font-bold">
+                  {showDetails.hindiTitle}
                 </span>
+              </motion.div>
 
-                {/* Micro Audio Wave Animation */}
-                <div className="flex h-3 items-end space-x-0.5 mt-2 overflow-hidden">
-                  <div
-                    className={`w-0.5 rounded-full bg-[#e6b17a] transition-all duration-300 ${
-                      activeHarmonic === chord.note
-                        ? "animate-[bounce_0.6s_infinite]"
-                        : "h-1"
-                    }`}
-                  />
-                  <div
-                    className={`w-0.5 rounded-full bg-[#bc4123] transition-all duration-300 ${
-                      activeHarmonic === chord.note
-                        ? "animate-[bounce_0.8s_infinite_delay-150]"
-                        : "h-0.5"
-                    }`}
-                  />
-                  <div
-                    className={`w-0.5 rounded-full bg-[#e6b17a] transition-all duration-300 ${
-                      activeHarmonic === chord.note
-                        ? "animate-[bounce_0.5s_infinite_delay-300]"
-                        : "h-1"
-                    }`}
-                  />
-                  <div
-                    className={`w-0.5 rounded-full bg-[#bc4123] transition-all duration-300 ${
-                      activeHarmonic === chord.note
-                        ? "animate-[bounce_0.7s_infinite_delay-100]"
-                        : "h-0.5"
-                    }`}
-                  />
-                </div>
+              <motion.h1
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.7 }}
+                className="font-serif text-4xl sm:text-7xl font-black text-white tracking-tight leading-none text-center"
+                id="hero-title"
+              >
+                {showDetails.title}
+                <span className="block text-xs sm:text-sm font-mono mt-3 tracking-[0.3em] text-[#e6b17a]/90 uppercase font-black">
+                  Performed by Annesha Partha and team
+                </span>
+              </motion.h1>
+            </div>
+
+            {/* Tagline Secondary */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3, duration: 0.8 }}
+              className="text-base sm:text-xl text-yellow-500 font-bold italic tracking-wide text-center"
+            >
+              "{showDetails.tagline}" — {showDetails.taglineSecondary || "Feelings with reverb, stories with voice."}
+            </motion.p>
+
+            {/* Long synopsis description */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4, duration: 0.8 }}
+              className="text-sm sm:text-base text-[#d1bfae] leading-relaxed font-light max-w-2xl text-center mx-auto"
+            >
+              {showDetails.subtitle} {showDetails.shortDesc || "An unplugged fusion built specifically for Jamshedpur spaces like Cafe Regal of 1935, blending retro acoustic chords with deeply honest personal memories."}
+            </motion.p>
+
+            {/* Action buttons matching the aesthetic */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.8 }}
+              className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full"
+            >
+              <button
+                onClick={() => scrollToSection("events")}
+                className="w-full sm:w-auto bg-gradient-to-r from-[#bc4123] to-[#8c2a1c] hover:from-[#ce4c2a] hover:to-[#a03625] text-white font-bold px-8 py-4 rounded-xl shadow-xl shadow-red-950/20 border border-red-900/50 flex items-center justify-center space-x-2 tracking-wider transition-all hover:scale-103 active:scale-97 cursor-pointer"
+                id="hero-book-btn"
+              >
+                <Calendar size={18} />
+                <span>BOOK PASSES NOW</span>
               </button>
-            ))}
+
+              <button
+                onClick={() => setIsPlayingTeaser(true)}
+                className="w-full sm:w-auto bg-[#110c09] hover:bg-[#20150e] text-[#e6b17a] hover:text-white font-bold px-7 py-4 rounded-xl border border-[#4d3221] flex items-center justify-center space-x-2 transition-all hover:scale-103 cursor-pointer"
+                id="hero-watch-btn"
+              >
+                <Play size={16} className="fill-[#e6b17a]" />
+                <span>WATCH LIVE PROMO</span>
+              </button>
+            </motion.div>
+
+            {/* Interactive Guitar Soundboard widget representing acoustic engine */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.8 }}
+              className="bg-[#0b0806] border border-[#26180f] p-6 rounded-2xl relative shadow-2xl max-w-2xl w-full text-left"
+              id="acoustic-soundboard"
+            >
+              <div className="absolute top-2.5 right-4 flex items-center space-x-1.5 text-[9px] text-[#a27b5c] font-mono uppercase tracking-widest font-extrabold select-none">
+                <Volume2 size={12} className="text-yellow-500" />
+                <span>TAP TO REVERB</span>
+              </div>
+
+              <div className="mb-4">
+                <h4 className="text-xs font-bold text-[#e6b17a] font-mono tracking-wider uppercase mb-1 flex items-center gap-1">
+                  <Sparkles size={11} className="text-[#bc4123]" />
+                  Acoustic G-chord Harvester
+                </h4>
+                <p className="text-[11px] text-[#d1bfae]/80">
+                  Tap notes to strum real live harmonic frequencies of "Ajeeb-o-Gareeb" chords directly on your speakers.
+                </p>
+              </div>
+
+              {/* Chords matrix */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {chords.map((chord) => (
+                  <button
+                    key={chord.note}
+                    onClick={() => playHarmonic(chord.note, chord.freq)}
+                    className={`relative py-3.5 px-3 rounded-xl border text-left flex flex-col justify-between overflow-hidden transition-all duration-300 transform active:scale-95 ${
+                      activeHarmonic === chord.note
+                        ? "bg-gradient-to-br " + chord.bg + " border-yellow-500"
+                        : "bg-black/90 hover:bg-[#150f0c] border-[#332014]"
+                    }`}
+                    id={`chord-${chord.note.substring(0, 1).toLowerCase()}`}
+                  >
+                    {activeHarmonic === chord.note && (
+                      <span className="absolute inset-0 bg-white/5 animate-pulse rounded-xl pointer-events-none" />
+                    )}
+
+                    <span className="text-[9px] font-mono text-[#a27b5c] font-black tracking-widest">
+                      NARRATIVE CODE
+                    </span>
+                    <span className="text-xs font-bold text-[#f7ede2] mt-2 block truncate">
+                      {chord.note.split(" ")[0]}
+                    </span>
+                    <span className="text-[8px] font-mono text-[#e6b17a] opacity-80 block truncate mt-0.5">
+                      {chord.note.substring(chord.note.indexOf("("))}
+                    </span>
+
+                    {/* Micro audio ripples indicator */}
+                    <div className="flex h-3 items-end space-x-0.5 mt-2 overflow-hidden">
+                      <div
+                        className={`w-0.5 rounded-full bg-yellow-500 transition-all duration-300 ${
+                          activeHarmonic === chord.note ? "animate-[bounce_0.6s_infinite] h-full" : "h-1"
+                        }`}
+                      />
+                      <div
+                        className={`w-0.5 rounded-full bg-red-500 transition-all duration-300 ${
+                          activeHarmonic === chord.note ? "animate-[bounce_0.8s_infinite_delay-150] h-3" : "h-1.5"
+                        }`}
+                      />
+                      <div
+                        className={`w-0.5 rounded-full bg-yellow-500 transition-all duration-300 ${
+                          activeHarmonic === chord.note ? "animate-[bounce_0.5s_infinite_delay-300] h-2" : "h-1"
+                        }`}
+                      />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+
           </div>
 
-          <div className="mt-4 flex items-center justify-between text-[11px] text-[#a27b5c] italic border-t border-[#3a271c]/30 pt-3">
-            <span>"Feelings with reverb, stories with voice"</span>
-            <span>Jamshedpur Spotlight</span>
-          </div>
-        </motion.div>
+        </div>
 
-        {/* Scroll helper */}
-        <button
-          onClick={() => scrollToSection("about-show")}
-          className="mt-12 text-[#a27b5c] hover:text-[#e6b17a] transition-colors p-2 flex flex-col items-center space-y-1 group"
-          id="hero-scroll-btn"
-        >
-          <span className="text-[10px] font-mono tracking-widest uppercase">The Story unfolds</span>
-          <ChevronDown size={16} className="animate-bounce group-hover:translate-y-1 transition-transform" />
-        </button>
+        {/* Scroll helper down */}
+        <div className="mt-14 flex justify-center">
+          <button
+            onClick={() => scrollToSection("about-show")}
+            className="text-stone-400 hover:text-yellow-500 transition p-2 flex flex-col items-center space-y-1 group cursor-pointer"
+            id="hero-scroll-btn"
+          >
+            <span className="text-[10px] font-mono tracking-[0.25em] uppercase font-bold text-[#a27b5c]">
+              The Story unfolds
+            </span>
+            <ChevronDown size={18} className="animate-bounce group-hover:translate-y-1 transition-transform text-[#bc4123]" />
+          </button>
+        </div>
+
       </div>
 
-      {/* Modal Video Teaser (Simulated Theatre Cinema Player) */}
+      {/* Teaser Video Mock Modal */}
       <AnimatePresence>
         {isPlayingTeaser && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-sm"
           >
             <motion.div
-              initial={{ scale: 0.9, y: 20 }}
+              initial={{ scale: 0.95, y: 30 }}
               animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="bg-[#110c09] border border-[#443022] rounded-2xl overflow-hidden w-full max-w-3xl shadow-2xl"
+              exit={{ scale: 0.95, y: 30 }}
+              className="bg-[#100b08] border border-stone-800 rounded-2xl overflow-hidden w-full max-w-2xl shadow-2xl"
             >
-              {/* Teaser Header bar */}
-              <div className="bg-[#16100c] border-b border-[#302117] px-6 py-4 flex justify-between items-center">
+              <div className="bg-[#1a110a] border-b border-[#301f14] px-6 py-4 flex justify-between items-center">
                 <div className="flex items-center space-x-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#8c2a1c] animate-pulse" />
-                  <h3 className="font-serif text-base font-bold text-[#e6b17a]">
-                    Ajeeb-o-Gareeb Showcase (Live Teaser Mock)
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" />
+                  <h3 className="font-serif text-sm font-black text-yellow-500 uppercase">
+                    Ajeeb-o-Gareeb • Live Showcase
                   </h3>
                 </div>
                 <button
                   onClick={() => setIsPlayingTeaser(false)}
-                  className="text-[#d1bfae] hover:text-[#fcffff] text-sm font-semibold hover:bg-[#2c1d15] px-2.5 py-1 rounded transition-colors"
+                  className="text-xs uppercase font-mono border border-stone-800 text-stone-300 hover:text-red-500 px-3 py-1.5 rounded transition"
                   id="close-teaser"
                 >
-                  Close
+                  Close Teaser
                 </button>
               </div>
 
-              {/* Theater Video Simulation Panel */}
-              <div className="relative bg-black aspect-video flex flex-col items-center justify-center p-8 text-center group overflow-hidden">
-                {/* Simulated ambient lighting */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 z-10" />
+              {/* Theater Video Frame simulation */}
+              <div className="relative aspect-video bg-black p-8 flex flex-col items-center justify-center text-center overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/40 z-10" />
                 <img
-                  src="https://images.unsplash.com/photo-1460723237483-7a6dc9d0b212?auto=format&fit=crop&q=80&w=800"
-                  alt="Live show theatre background"
-                  className="absolute inset-0 w-full h-full object-cover opacity-45 scale-105 group-hover:scale-100 transition-transform duration-1000"
+                  src={showDetails.heroImage || "https://images.unsplash.com/photo-1460723237483-7a6dc9d0b212?auto=format&fit=crop&q=80&w=800"}
+                  alt="Spotlight on stage background"
+                  className="absolute inset-0 w-full h-full object-cover opacity-35"
                   referrerPolicy="no-referrer"
                 />
 
-                <div className="relative z-20 flex flex-col items-center">
-                  {/* Dynamic waveform visualizer bar representing live music playing */}
-                  <div className="flex items-end justify-center space-x-1.5 h-16 mb-6">
-                    {[1, 2, 3, 4, 5, 4, 3, 2, 1, 3, 5, 6, 4, 2, 3].map((val, idx) => (
+                <div className="relative z-20 space-y-4">
+                  {/* Waveform audio simulator */}
+                  <div className="flex justify-center items-end space-x-1 h-12 mb-4">
+                    {[1, 3, 2, 4, 6, 4, 3, 5, 2, 4, 1, 3, 5, 3, 2].map((height, i) => (
                       <motion.div
-                        key={idx}
+                        key={i}
                         className="w-1 bg-[#bc4123] rounded-full"
-                        animate={{
-                          height: [12, val * 8, 12],
-                        }}
+                        animate={{ height: [8, height * 7, 8] }}
                         transition={{
-                          duration: 1 + (idx % 3) * 0.2,
+                          duration: 0.9 + (i % 3) * 0.2,
                           repeat: Infinity,
-                          ease: "easeInOut",
+                          ease: "easeInOut"
                         }}
                       />
                     ))}
                   </div>
 
-                  <span className="text-xs font-mono text-[#e6b17a] tracking-widest uppercase mb-1">
-                    PLAYING AUDIO TEASER
+                  <span className="text-[10px] font-mono text-[#e6b17a] tracking-[0.2em] uppercase font-black block">
+                    STREAMING REVERB PREVIEW
                   </span>
-                  <h4 className="font-serif text-lg sm:text-2xl font-bold text-white mb-2">
-                    "Strange stories with an echo..."
+                  <h4 className="font-serif text-lg sm:text-2xl font-bold text-white uppercase">
+                    "Feelings with reverb, stories with voice."
                   </h4>
-                  <p className="text-xs text-[#d1bfae]/90 max-w-md">
-                    Live from Cafe Regal, Jamshedpur: Annesha sings a composition on nostalgia, transitioning gracefully into a story representing 2017.
+                  <p className="text-xs text-stone-300 max-w-md mx-auto leading-relaxed">
+                    Live at Cafe Regal, Jamshedpur: Annesha sings a composition built dedicated to her father's memories, weaving deep literature into cozy acoustic guitars.
                   </p>
 
-                  <div className="flex items-center space-x-3 mt-6">
+                  <div className="flex gap-3 justify-center pt-3">
                     <button
-                      onClick={() => {
-                        // Play a lovely resonant synth when clicking listen
-                        playHarmonic("Am", 440);
-                      }}
-                      className="bg-[#bc4123] hover:bg-[#ce4c2a] text-white text-xs font-bold px-4 py-2 rounded-full flex items-center space-x-1.5 shadow transition-all cursor-pointer"
-                      id="listen-harmonic-teaser"
+                      onClick={() => playHarmonic("A Minor", 220)}
+                      className="bg-yellow-500 text-black text-xs font-bold px-4 py-2 rounded-lg flex items-center space-x-1.5 cursor-pointer shadow hover:bg-yellow-400"
                     >
                       <Volume2 size={14} />
-                      <span>Sound Check Harmonic</span>
+                      <span>Test Sound Reverb</span>
                     </button>
                     <a
                       href="https://www.instagram.com/ajeebogareeblive/"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="bg-[#281810] hover:bg-[#3d261a] border border-[#52331f] text-[#e6b17a] text-xs font-bold px-4 py-2 rounded-full flex items-center space-x-1"
-                      id="teaser-ig-go"
+                      className="bg-neutral-900 border border-neutral-700 text-white text-xs px-4 py-2 rounded-lg flex items-center shadow hover:bg-neutral-800"
                     >
-                      <span>Go watch on Reels</span>
+                      Go watch on Instagram Reel
                     </a>
                   </div>
                 </div>
+
               </div>
 
-              {/* Footer status */}
-              <div className="bg-[#16100c] px-6 py-4 flex items-center justify-between border-t border-[#302117] text-xs text-[#a27b5c]">
-                <span>100-Minute Musical Production</span>
-                <span className="font-mono text-[#e6b17a]">#ajeebogareeblive</span>
+              <div className="bg-[#19110a] px-6 py-3 flex items-center justify-between border-t border-[#301f14] text-[10px] font-mono text-stone-400">
+                <span>100-MINUTE THEATER PRODUCTION</span>
+                <span>@ajeebogareeblive</span>
               </div>
             </motion.div>
           </motion.div>

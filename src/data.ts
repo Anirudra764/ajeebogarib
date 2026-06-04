@@ -3,14 +3,16 @@ import { PerformanceShow, GalleryItem } from "./types";
 export const SHOW_DETAILS = {
   title: "Ajeeb-o-Gareeb",
   hindiTitle: "अजीब ओ गरीब",
+  bengaliTitle: "অজিব ও গরিব",
   duration: "100 Minutes",
-  tagline: "Something ajeeb is coming your way — and it's gareeb on boredom!",
-  subtitle: "A live storytelling musical blending acoustic music, interactive theatre, and unforgettable personal tales.",
+  tagline: "storytelling • live music",
+  subtitle: "An intimate live storytelling musical blending acoustic guitar reverb, interactive theater, and raw vulnerability.",
   taglineSecondary: "Feelings with reverb, stories with voice",
-  shortDesc: "Experience the vintage allure of physical connection and raw emotion in a modern world. A live 100-minute performance where narratives flow seamlessly into live acoustic compositions, creating a state of collective vulnerability and absolute enchantment.",
+  shortDesc: "Experience the vintage allure of physical connection and raw emotion in a modern world. A live 100-minute theatrical performance where personal experiences flow seamlessly into acoustic chords, inviting collective resonance and absolute transparency.",
   atmosphere: "Strange, surreal, and seriously unmissable",
-  style: "Old-school charm + deep emotions + theater narrative + live music fusion",
-  hashtags: ["#ajeebogareeb", "#jamshedpur", "#storytellingnight", "#caferegal"]
+  style: "Storytelling Live Music + Acoustic Reverb + Interactive Theatre + Nostalgic Memory Loops",
+  hashtags: ["#ajeebogareeb", "#jamshedpur", "#storytellingnight", "#caferegal"],
+  heroImage: "https://images.unsplash.com/photo-1460723237483-7a6dc9d0b212?auto=format&fit=crop&q=80&w=800"
 };
 
 export const PERFORMER_BIO = {

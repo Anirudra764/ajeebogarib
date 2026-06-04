@@ -1,9 +1,10 @@
 import React from "react";
 import { motion } from "motion/react";
 import { Sparkles, Music, Star, Compass, Clock, Heart, Pocket } from "lucide-react";
-import { SHOW_DETAILS } from "../data";
+import { useAjeebData } from "../context/AjeebDataContext";
 
 export default function AboutShow() {
+  const { showDetails } = useAjeebData();
   const cards = [
     {
       icon: <Clock className="text-[#bc4123]" size={24} />,
@@ -54,7 +55,7 @@ export default function AboutShow() {
           </h2>
           <div className="w-16 h-1 bg-[#bc4123] mx-auto mb-6"></div>
           <p className="text-[#d1bfae] text-base leading-relaxed">
-            {SHOW_DETAILS.shortDesc}
+            {showDetails.shortDesc}
           </p>
         </div>
 
@@ -94,12 +95,15 @@ export default function AboutShow() {
             <div className="absolute inset-0 bg-[radial-gradient(#8c2a1c_1px,transparent_1px)] [background-size:16px_16px] opacity-15 pointer-events-none" />
 
             <div className="relative z-10">
-              <span className="font-serif text-sm text-[#e6b17a] tracking-widest uppercase block mb-4">
+              <span className="font-serif text-sm text-[#e6b17a] tracking-widest uppercase block mb-3">
                 THE PLAYBILL • PROGRAMME
               </span>
-              <h3 className="font-serif text-4xl font-extrabold text-[#f7ede2] tracking-tight leading-tight mb-2">
+              <h3 className="font-serif text-3xl font-extrabold text-[#f7ede2] tracking-tight leading-tight">
                 अजीब ओ गरीब
               </h3>
+              <h4 className="font-serif text-2xl font-black text-red-500 tracking-wide mt-1 mb-2">
+                অজিব ও গরিব
+              </h4>
               <p className="text-xs text-[#a27b5c] font-medium tracking-widest uppercase mb-8">
                 Jamshedpur Artistry Live
               </p>
@@ -119,7 +123,7 @@ export default function AboutShow() {
                 </div>
                 <div className="border-b border-[#3a271c] pb-2 flex justify-between">
                   <span className="text-[#a27b5c]">ATMOSPHERE</span>
-                  <span className="font-medium text-white">{SHOW_DETAILS.atmosphere}</span>
+                  <span className="font-medium text-white">{showDetails.atmosphere}</span>
                 </div>
               </div>
             </div>
@@ -148,7 +152,7 @@ export default function AboutShow() {
 
             {/* List tags */}
             <div className="flex flex-wrap gap-2.5 mb-8">
-              {SHOW_DETAILS.style.split("+").map((tag, i) => (
+              {(showDetails.style || "").split("+").map((tag, i) => (
                 <span
                   key={i}
                   className="bg-[#2a1a10] border border-[#543b2a] text-[#e6b17a] font-mono text-[10px] tracking-wide font-medium px-3 py-1.5 rounded-full"
@@ -164,7 +168,7 @@ export default function AboutShow() {
                 Follow the live story:
               </span>
               <div className="flex gap-2">
-                {SHOW_DETAILS.hashtags.map((ht) => (
+                {(showDetails.hashtags || []).map((ht) => (
                   <span key={ht} className="text-xs text-[#bc4123] font-mono font-bold hover:underline cursor-pointer">
                     {ht}
                   </span>

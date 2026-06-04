@@ -1,25 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Heart, MessageCircle, Instagram, Youtube, Compass, Filter, Share2, CornerDownRight } from "lucide-react";
-import { GALLERY_ITEMS } from "../data";
+import { useAjeebData } from "../context/AjeebDataContext";
 import { GalleryItem } from "../types";
 
 export default function GallerySection() {
   const [activeTab, setActiveTab] = useState<"all" | "live" | "bts" | "promo" | "quote">("all");
-  const [items, setItems] = useState<GalleryItem[]>(GALLERY_ITEMS);
+  const { gallery: items, comments: commentsStore, likeGalleryItem, addComment } = useAjeebData();
   const [activeModalItem, setActiveModalItem] = useState<GalleryItem | null>(null);
   
-  // Dynamic temporary comments store to let users interact on cards!
-  const [commentsStore, setCommentsStore] = useState<Record<string, Array<{ user: string; text: string; date: string }>>>({
-    "gal-01": [
-      { user: "storylover_jamshedpur", text: "The vibe at Cafe Regal was absolutely unreal! Can't wait for the next show.", date: "2 mins ago" },
-      { user: "deepika_sen", text: "When Annesha started singin about her father, literal tears in the whole row.", date: "1 hour ago" }
-    ],
-    "gal-03": [
-      { user: "caferegal_regular", text: "We love hosting Annesha! She brings absolute soul into this room.", date: "Yesterday" }
-    ]
-  });
-
   const [newCommentUser, setNewCommentUser] = useState("");
   const [newCommentText, setNewCommentText] = useState("");
 
@@ -29,32 +18,14 @@ export default function GallerySection() {
 
   const handleLike = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setItems(prev => prev.map(item => {
-      if (item.id === id) {
-        return { ...item, likes: item.likes + 1 };
-      }
-      return item;
-    }));
+    likeGalleryItem(id);
   };
 
-  const handleAddComment = (itemId: string) => {
+  const handleAddComment = async (itemId: string) => {
     if (!newCommentText.trim()) return;
-    const author = newCommentUser.trim() ||"Anonymous Storyteller";
+    const author = newCommentUser.trim() || "Anonymous Storyteller";
     
-    setCommentsStore(prev => ({
-      ...prev,
-      [itemId]: [
-        ...(prev[itemId] || []),
-        { user: author, text: newCommentText.trim(), date: "Just now" }
-      ]
-    }));
-
-    setItems(prev => prev.map(item => {
-      if (item.id === itemId) {
-        return { ...item, comments: item.comments + 1 };
-      }
-      return item;
-    }));
+    await addComment(itemId, author, newCommentText.trim());
 
     setNewCommentText("");
     setNewCommentUser("");

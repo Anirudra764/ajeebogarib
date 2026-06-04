@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Menu, X, Instagram, Youtube, Sparkles } from "lucide-react";
-import { SHOW_DETAILS } from "../data";
+import { useAjeebData } from "../context/AjeebDataContext";
 
 interface HeaderProps {
   activeSection: string;
@@ -11,6 +11,7 @@ interface HeaderProps {
 export default function Header({ activeSection, scrollToSection }: HeaderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { showDetails } = useAjeebData();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -40,18 +41,23 @@ export default function Header({ activeSection, scrollToSection }: HeaderProps) 
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center">
-          {/* Logo Brand / Hindi Text */}
+          {/* Logo Brand / Bengali & Hindi Text */}
           <button
             onClick={() => scrollToSection("hero")}
-            className="flex flex-col text-left group focus:outline-none cursor-pointer"
+            className="flex items-center gap-3.5 text-left group focus:outline-none cursor-pointer"
             id="nav-logo-btn"
           >
-            <span className="font-serif text-xl sm:text-2xl font-bold tracking-tight text-[#e6b17a] group-hover:text-[#f3d4b3] transition-colors leading-none">
-              {SHOW_DETAILS.title}
-            </span>
-            <span className="font-serif text-xs text-[#a27b5c] tracking-widest mt-0.5 font-medium">
-              {SHOW_DETAILS.hindiTitle} • अजीबो गरीब
-            </span>
+            <div className="flex flex-col">
+              <span className="font-serif text-xl sm:text-2xl font-black tracking-tight text-[#e6b17a] group-hover:text-[#f3d4b3] transition-colors leading-none flex items-center gap-2">
+                <span>{showDetails.title}</span>
+                <span className="text-red-500 font-serif text-[13px] sm:text-[15px] font-black tracking-wide border-l border-[#3a2012] pl-2 animate-pulse">
+                  {showDetails.bengaliTitle || "অজিব ও গরিব"}
+                </span>
+              </span>
+              <span className="font-serif text-[10px] text-[#a27b5c] tracking-widest mt-1 font-medium select-none">
+                {showDetails.hindiTitle} • LIVE ACOUSTIC STORYTELLING
+              </span>
+            </div>
           </button>
 
           {/* Desktop Navigation */}

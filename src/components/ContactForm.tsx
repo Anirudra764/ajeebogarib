@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Send, Phone, MessageSquare, Instagram, Mail, Navigation, Star, Sparkles, Check } from "lucide-react";
-import { SHOW_DETAILS, PERFORMER_BIO } from "../data";
+import { useAjeebData } from "../context/AjeebDataContext";
 
 export default function ContactForm() {
+  const { submitLead } = useAjeebData();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("Show Booking Invitation");
@@ -17,19 +18,29 @@ export default function ContactForm() {
   );
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMsg}`;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !email.trim() || !message.trim()) return;
 
-    // Simulate inquiry sent
-    setSentSuccess(true);
-    setName("");
-    setEmail("");
-    setMessage("");
+    const ok = await submitLead({
+      name: name.trim(),
+      email: email.trim(),
+      subject: subject,
+      message: message.trim()
+    });
 
-    setTimeout(() => {
-      setSentSuccess(false);
-    }, 4000);
+    if (ok) {
+      setSentSuccess(true);
+      setName("");
+      setEmail("");
+      setMessage("");
+
+      setTimeout(() => {
+        setSentSuccess(false);
+      }, 4000);
+    } else {
+      alert("Enquiry could not be delivered to the server.");
+    }
   };
 
   return (

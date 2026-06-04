@@ -58,7 +58,7 @@ export default function ParchmentWall() {
     }
   ];
 
-  useEffect(() => {
+  const loadNotesFromStorage = () => {
     try {
       const stored = localStorage.getItem("ajeeb_parchments");
       if (stored) {
@@ -70,6 +70,17 @@ export default function ParchmentWall() {
     } catch (e) {
       setNotes(initialNotes);
     }
+  };
+
+  useEffect(() => {
+    loadNotesFromStorage();
+
+    const handleUpdate = () => {
+      loadNotesFromStorage();
+    };
+
+    window.addEventListener("ajeeb-state-updated", handleUpdate);
+    return () => window.removeEventListener("ajeeb-state-updated", handleUpdate);
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -90,6 +101,7 @@ export default function ParchmentWall() {
     setNotes(updated);
     try {
       localStorage.setItem("ajeeb_parchments", JSON.stringify(updated));
+      window.dispatchEvent(new Event("ajeeb-state-updated"));
     } catch (err) {}
 
     // Form Reset
@@ -104,6 +116,7 @@ export default function ParchmentWall() {
       setNotes(initialNotes);
       try {
         localStorage.setItem("ajeeb_parchments", JSON.stringify(initialNotes));
+        window.dispatchEvent(new Event("ajeeb-state-updated"));
       } catch (e) {}
     }
   };

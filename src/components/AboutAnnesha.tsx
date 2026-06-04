@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Calendar, Award, Heart, Scroll, Instagram, Quote, Flame, BookOpen } from "lucide-react";
-import { PERFORMER_BIO } from "../data";
+import { useAjeebData } from "../context/AjeebDataContext";
 
 export default function AboutAnnesha() {
   const [selectedMilestone, setSelectedMilestone] = useState(2); // Default to Father's Legacy (middle)
+  const { performerBio } = useAjeebData();
 
   return (
     <section
@@ -23,10 +24,10 @@ export default function AboutAnnesha() {
               MEET THE ARTIST
             </span>
             <h2 className="font-serif text-3xl sm:text-5xl font-black text-[#f7ede2] tracking-tight mb-2">
-              Annesha Partha Mishra
+              {performerBio.name}
             </h2>
             <p className="text-xs text-[#a27b5c] font-mono tracking-widest select-none uppercase">
-              {PERFORMER_BIO.roles.join(" • ")}
+              {(performerBio.roles || []).join(" • ")}
             </p>
           </div>
           <div className="flex items-center space-x-3 bg-[#1e130c] border border-[#3e2719] px-5 py-3 rounded-xl max-w-xs">
@@ -34,8 +35,8 @@ export default function AboutAnnesha() {
             <div>
               <p className="text-xs text-[#d1bfae]/80">Instagram Creator</p>
               <p className="font-serif text-sm font-bold text-[#f7ede2]">
-                {PERFORMER_BIO.instagramHandle}{" "}
-                <span className="text-[#e6b17a] text-xs font-mono">({PERFORMER_BIO.followersCount})</span>
+                {performerBio.instagramHandle}{" "}
+                <span className="text-[#e6b17a] text-xs font-mono">({performerBio.followersCount})</span>
               </p>
             </div>
           </div>
@@ -52,7 +53,7 @@ export default function AboutAnnesha() {
               </div>
               
               <div className="pt-4 grid grid-cols-2 gap-4">
-                {PERFORMER_BIO.stats.map((stat, i) => (
+                {(performerBio.stats || []).map((stat: any, i: number) => (
                   <div key={i} className="border-b border-l border-[#302015]/80 p-3 bg-[#120c09]/30 rounded">
                     <span className="block font-serif text-2xl font-bold text-[#e6b17a]">
                       {stat.value}
@@ -76,13 +77,13 @@ export default function AboutAnnesha() {
                 <h4 className="font-serif font-bold text-sm">Academic & Writing Roots</h4>
               </div>
               <p className="text-xs text-[#e6b17a] font-sans font-medium mb-1">
-                {PERFORMER_BIO.education.degree} Student
+                {performerBio.education?.degree} Student
               </p>
               <p className="text-[10px] text-[#a27b5c] font-mono mb-4 uppercase">
-                {PERFORMER_BIO.education.institution} ({PERFORMER_BIO.education.batch})
+                {performerBio.education?.institution} ({performerBio.education?.batch})
               </p>
               <p className="text-xs text-[#d1bfae]/90 leading-relaxed italic">
-                "{PERFORMER_BIO.education.scholarshipStory}"
+                "{performerBio.education?.scholarshipStory}"
               </p>
             </div>
           </div>
@@ -105,12 +106,12 @@ export default function AboutAnnesha() {
                 <div
                   className="absolute top-1/2 left-0 h-[2px] bg-[#bc4123] -translate-y-1/2 z-0 transition-all duration-500"
                   style={{
-                    width: `${(selectedMilestone / (PERFORMER_BIO.keyMilestones.length - 1)) * 100}%`
+                    width: `${(selectedMilestone / (Math.max(1, (performerBio.keyMilestones || []).length - 1))) * 100}%`
                   }}
                 />
 
                 {/* Steps Nodes */}
-                {PERFORMER_BIO.keyMilestones.map((ms, idx) => (
+                {(performerBio.keyMilestones || []).map((ms: any, idx: number) => (
                   <button
                     key={idx}
                     onClick={() => setSelectedMilestone(idx)}
@@ -139,21 +140,21 @@ export default function AboutAnnesha() {
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-mono text-[10px] text-[#bc4123] font-bold uppercase tracking-widest bg-[#2b1812] px-2.5 py-1 rounded">
-                        Milestone Profile {selectedMilestone + 1} of {PERFORMER_BIO.keyMilestones.length}
+                        Milestone Profile {selectedMilestone + 1} of {(performerBio.keyMilestones || []).length}
                       </span>
                       <span className="text-xs text-[#a27b5c] font-semibold">
-                        {PERFORMER_BIO.keyMilestones[selectedMilestone].age
-                          ? `Age: ${PERFORMER_BIO.keyMilestones[selectedMilestone].age}`
-                          : `Year / Stage: ${PERFORMER_BIO.keyMilestones[selectedMilestone].year}`}
+                        {performerBio.keyMilestones?.[selectedMilestone]?.age
+                          ? `Age: ${performerBio.keyMilestones[selectedMilestone].age}`
+                          : `Year / Stage: ${performerBio.keyMilestones?.[selectedMilestone]?.year}`}
                       </span>
                     </div>
 
                     <h4 className="font-serif text-lg sm:text-xl font-bold text-[#e6b17a] select-text">
-                      {PERFORMER_BIO.keyMilestones[selectedMilestone].title}
+                      {performerBio.keyMilestones?.[selectedMilestone]?.title}
                     </h4>
 
                     <p className="text-xs sm:text-sm text-[#d1bfae] leading-relaxed select-text font-light">
-                      {PERFORMER_BIO.keyMilestones[selectedMilestone].description}
+                      {performerBio.keyMilestones?.[selectedMilestone]?.description}
                     </p>
                   </motion.div>
                 </AnimatePresence>
@@ -195,13 +196,13 @@ export default function AboutAnnesha() {
               YOUTUBE PODCAST • DOPAMINE HIT
             </span>
             <h3 className="font-serif text-2xl sm:text-3xl font-extrabold text-[#f7ede2]">
-              Podcast: "{PERFORMER_BIO.podcast.name}"
+              Podcast: "{performerBio.podcast?.name || "Dopamine & Reverb"}"
             </h3>
             <p className="text-xs sm:text-sm text-[#d1bfae]/95 leading-relaxed">
-              {PERFORMER_BIO.podcast.description} It's an intimate soundbox dedicated to addressing raw independent growth steps, creative blocks, and the physical grind of keeping the fire lit.
+              {performerBio.podcast?.description || "An intimate soundbox dedicated to addressing raw independent growth steps, creative blocks, and the physical grind of keeping the fire lit."}
             </p>
             <p className="text-xs text-[#a27b5c] font-mono">
-              ★ {PERFORMER_BIO.podcast.linkNote}
+              ★ {performerBio.podcast?.linkNote || "Listen on Spotify & YouTube"}
             </p>
           </div>
 

@@ -1,0 +1,46 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Registered spectators and administrative organizers",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["viewer", "admin"] },
+        "registeredAt": { "type": "string" }
+      },
+      "required": ["uid", "name", "email", "role"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Spectator seat reservations for live storytelling events",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "showId": { "type": "string" },
+        "showTitle": { "type": "string" },
+        "date": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "ticketsCount": { "type": "integer" },
+        "status": { "type": "string" },
+        "reservedAt": { "type": "string" },
+        "uid": { "type": "string" }
+      },
+      "required": ["id", "showId", "showTitle", "name", "email", "phone", "ticketsCount", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User account representations keyed by their Firebase Auth UID"
+    },
+    "/bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Individual ticket reservation records"
+    }
+  }
+}
