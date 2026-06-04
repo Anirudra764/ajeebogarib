@@ -22,7 +22,8 @@ import {
   orderBy, 
   getDocs,
   getDoc,
-  writeBatch
+  writeBatch,
+  where
 } from "firebase/firestore";
 
 enum OperationType {
@@ -277,38 +278,74 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setLoading(false);
     });
 
-    // 6. Bookings ticket snapshot (Admin watches all, viewer watches private or fallbacks)
-    const unsubBookings = onSnapshot(collection(db, "bookings"), (snap) => {
-      const items: TicketReservation[] = [];
-      snap.forEach((docSnap) => {
-        items.push(docSnap.data() as TicketReservation);
-      });
-      setBookings(items);
-    }, (err) => {
-      console.warn("Bookings real-time list unavailable:", err);
-    });
-
-    // 7. Leads snapshot
-    const unsubLeads = onSnapshot(collection(db, "leads"), (snap) => {
-      const items: ContactMessage[] = [];
-      snap.forEach((docSnap) => {
-        items.push(docSnap.data() as ContactMessage);
-      });
-      setLeads(items);
-    }, (err) => {
-      console.warn("Leads list unavailable:", err);
-    });
-
     return () => {
       unsubShowDetails();
       unsubBio();
       unsubShows();
       unsubGallery();
       unsubComments();
+    };
+  }, []);
+
+  // Dynamic database listeners for user-specific data and offline guest fallback
+  useEffect(() => {
+    let unsubBookings = () => {};
+    let unsubLeads = () => {};
+
+    if (currentUser) {
+      const isAdminUser = currentUser.email === "anirudrapaul31@gmail.com";
+
+      // 1. Live bookings: Admin tracks entire collection; spectators only stream their private subset
+      const bookingsRef = collection(db, "bookings");
+      const bookingsQuery = isAdminUser 
+        ? bookingsRef 
+        : query(bookingsRef, where("uid", "==", currentUser.uid));
+
+      unsubBookings = onSnapshot(bookingsQuery, (snap) => {
+        const items: TicketReservation[] = [];
+        snap.forEach((docSnap) => {
+          items.push(docSnap.data() as TicketReservation);
+        });
+        setBookings(items);
+      }, (err) => {
+        console.warn("User bookings list snap error:", err);
+      });
+
+      // 2. Leads catalog: Admin only
+      if (isAdminUser) {
+        unsubLeads = onSnapshot(collection(db, "leads"), (snap) => {
+          const items: ContactMessage[] = [];
+          snap.forEach((docSnap) => {
+            items.push(docSnap.data() as ContactMessage);
+          });
+          setLeads(items);
+        }, (err) => {
+          console.warn("Leads list snapshot error:", err);
+        });
+      } else {
+        setLeads([]);
+      }
+    } else {
+      // Unsigned Guest: Retrieve cached local bookings
+      const localStr = localStorage.getItem("ajeeb_bookings");
+      if (localStr) {
+        try {
+          const list = JSON.parse(localStr);
+          setBookings(Array.isArray(list) ? list : []);
+        } catch (e) {
+          setBookings([]);
+        }
+      } else {
+        setBookings([]);
+      }
+      setLeads([]);
+    }
+
+    return () => {
       unsubBookings();
       unsubLeads();
     };
-  }, []);
+  }, [currentUser]);
 
   const signUpWithEmail = async (email: string, pass: string, name: string) => {
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
@@ -523,6 +560,7 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const submitReservation = async (res: Omit<TicketReservation, "id" | "reservedAt">) => {
     const reservationId = `res-${Date.now()}`;
+    const userUid = currentUser ? currentUser.uid : "guest";
     const bookingData: TicketReservation = {
       id: reservationId,
       showId: res.showId,
@@ -533,11 +571,29 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       phone: res.phone,
       ticketsCount: res.ticketsCount,
       status: "confirmed",
-      reservedAt: new Date().toLocaleDateString("en-IN")
+      reservedAt: new Date().toLocaleDateString("en-IN"),
+      uid: userUid
     };
     const path = `bookings/${reservationId}`;
     try {
       await setDoc(doc(db, "bookings", reservationId), bookingData);
+
+      // Save to local storage for persistence & instant viewer display
+      const localStr = localStorage.getItem("ajeeb_bookings") || "[]";
+      let localList = [];
+      try {
+        localList = JSON.parse(localStr);
+        if (!Array.isArray(localList)) localList = [];
+      } catch (err) {
+        localList = [];
+      }
+      localList.push(bookingData);
+      localStorage.setItem("ajeeb_bookings", JSON.stringify(localList));
+
+      // Guest: update local context array immediately since live listener isn't subscribed to "guest" uid
+      if (!currentUser) {
+        setBookings(prev => [...prev, bookingData]);
+      }
       return true;
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, path);
@@ -549,6 +605,23 @@ export const AjeebDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const path = `bookings/${id}`;
     try {
       await deleteDoc(doc(db, "bookings", id));
+
+      // Remove from browser storage cache
+      const localStr = localStorage.getItem("ajeeb_bookings") || "[]";
+      let localList = [];
+      try {
+        localList = JSON.parse(localStr);
+        if (!Array.isArray(localList)) localList = [];
+      } catch (err) {
+        localList = [];
+      }
+      localList = localList.filter((b: any) => b.id !== id);
+      localStorage.setItem("ajeeb_bookings", JSON.stringify(localList));
+
+      // Guest: update state from memory immediately
+      if (!currentUser) {
+        setBookings(prev => prev.filter(b => b.id !== id));
+      }
       return true;
     } catch (e) {
       handleFirestoreError(e, OperationType.DELETE, path);

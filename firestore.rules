@@ -112,9 +112,13 @@ service cloud.firestore {
 
     // Bookings collection rules
     match /bookings/{bookingId} {
-      allow read: if isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
-      allow create: if isSignedIn() && incoming().uid == request.auth.uid && isValidBooking(incoming());
-      allow update, delete: if isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
+      allow get: if (existing().uid == "guest") || (isSignedIn() && (existing().uid == request.auth.uid || isAdmin()));
+      allow list: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow create: if (
+        (incoming().uid == "guest" && isValidBooking(incoming())) ||
+        (isSignedIn() && incoming().uid == request.auth.uid && isValidBooking(incoming()))
+      );
+      allow update, delete: if isAdmin() || (isSignedIn() && (existing().uid == request.auth.uid || isAdmin()));
     }
 
     // Shows/Events collection rules

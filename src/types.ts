@@ -25,6 +25,7 @@ export interface TicketReservation {
   ticketsCount: number;
   reservedAt: string;
   status: "confirmed" | "pending";
+  uid?: string;
 }
 
 export interface GalleryItem {
