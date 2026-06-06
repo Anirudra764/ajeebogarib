@@ -51,13 +51,53 @@ export default function App() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const scrollToSection = (id: string) => {
+  const scrollToSection = (id: string, pushHistory = true) => {
     const el = document.getElementById(id);
     if (el) {
       el.scrollIntoView({ behavior: "smooth" });
       setActiveSection(id);
+      if (pushHistory) {
+        window.history.pushState({ sectionId: id }, "", `#${id}`);
+      }
     }
   };
+
+  // Listen to browser Back/Forward (popstate) actions to transition smoothly without fully refreshing
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && event.state.sectionId) {
+        scrollToSection(event.state.sectionId, false);
+      } else {
+        const hashSection = window.location.hash.replace("#", "");
+        if (hashSection) {
+          scrollToSection(hashSection, false);
+        } else {
+          scrollToSection("hero", false);
+        }
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    // Initial check & state replacement in history stack
+    const currentHash = window.location.hash.replace("#", "") || "hero";
+    window.history.replaceState({ sectionId: currentHash }, "", `#${currentHash}`);
+
+    if (window.location.hash) {
+      const targetSec = window.location.hash.replace("#", "");
+      const timer = setTimeout(() => {
+        scrollToSection(targetSec, false);
+      }, 350);
+      return () => {
+        window.removeEventListener("popstate", handlePopState);
+        clearTimeout(timer);
+      };
+    }
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0f0a07] text-[#f7ede2] font-sans antialiased selection:bg-[#bc4123] selection:text-white">
